@@ -251,14 +251,23 @@ export async function POST(req: NextRequest) {
   - Classify health_verdict as NOT_APPLICABLE (medicines are therapeutic).
   - Extract active salt, dosage, and critical contraindications (e.g. "Take on empty stomach", "Do not take with milk/antacids").
 - TEXTBOOK_EDUCATION / FORM_DOCUMENT / PLANT_BOTANY / GENERAL_OBJECT:
-  - Follow domain guidelines, and strictly redact any 12-digit Aadhaar number as "[ID Redacted]".`,
+## SUB-SECOND SPEED & EXTREME CONCISENESS MANDATE:
+1. Generate response in milliseconds: be ultra-fast, crisp, and direct.
+2. object_title: Accurate product & brand name (max 5 words).
+3. headline_summary: Crisp 1-sentence summary (<10 words).
+4. health_verdict.reason: Crisp 1-sentence reason (<12 words).
+5. risk_factors: Maximum 2 short items.
+6. safety_warnings: Maximum 2 short items.
+7. structured_attributes: Maximum 3 key visible attributes.
+8. actionable_insights: Maximum 2 practical consumer tips.
+9. initial_voice_greeting_hinglish: Exactly 1 warm, natural spoken sentence (<15 words). Zero corporate fluff.`,
       },
       {
         role: 'user',
         content: [
           {
             type: 'text',
-            text: 'Perform an exhaustive full-frame, multi-object detection and zero-hallucination analysis. Inspect all sectors of the image. If multiple products are shown, classify every one and provide a direct comparative recommendation on which is better.',
+            text: 'Perform fast edge-to-edge optical scan. Detect all products and classify health verdict with sub-second precision.',
           },
           {
             type: 'image_url',
@@ -277,7 +286,7 @@ export async function POST(req: NextRequest) {
       response = await openai.chat.completions.create({
         model: 'gpt-4o-mini',
         temperature: 0.0,
-        max_tokens: 800,
+        max_tokens: 420,
         response_format: {
           type: 'json_schema',
           json_schema: multiObjectVisionSchema,
@@ -289,7 +298,7 @@ export async function POST(req: NextRequest) {
         response = await openai.chat.completions.create({
           model: 'gpt-4o-2024-08-06',
           temperature: 0.0,
-          max_tokens: 800,
+          max_tokens: 420,
           response_format: {
             type: 'json_schema',
             json_schema: multiObjectVisionSchema,
@@ -300,7 +309,7 @@ export async function POST(req: NextRequest) {
         response = await openai.chat.completions.create({
           model: 'gpt-4o',
           temperature: 0.0,
-          max_tokens: 800,
+          max_tokens: 420,
           response_format: {
             type: 'json_schema',
             json_schema: multiObjectVisionSchema,
@@ -343,7 +352,7 @@ export async function POST(req: NextRequest) {
               )}&page_size=1&json=true`;
 
               const controller = new AbortController();
-              const timeoutId = setTimeout(() => controller.abort(), 800);
+              const timeoutId = setTimeout(() => controller.abort(), 500);
 
               try {
                 const offRes = await fetch(offUrl, {
@@ -386,7 +395,7 @@ export async function POST(req: NextRequest) {
               )}"+openfda.generic_name:"${encodeURIComponent(firstWord)}"&limit=1`;
 
               const controller = new AbortController();
-              const timeoutId = setTimeout(() => controller.abort(), 800);
+              const timeoutId = setTimeout(() => controller.abort(), 500);
 
               try {
                 const fdaRes = await fetch(fdaUrl, {

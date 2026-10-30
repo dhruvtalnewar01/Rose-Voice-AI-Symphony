@@ -463,7 +463,7 @@ export default function LiveVisionVoiceStudio() {
 
         // When rotated 90 or 270 on phone, swap width/height so AI vision receives upright frame
         const isSwapped = rotationAngle === 90 || rotationAngle === 270;
-        const targetWidth = Math.min(isSwapped ? rawH : rawW, 800);
+        const targetWidth = Math.min(isSwapped ? rawH : rawW, 640);
         const targetHeight = Math.round((targetWidth / (isSwapped ? rawH : rawW)) * (isSwapped ? rawW : rawH));
 
         canvas.width = targetWidth;
@@ -478,7 +478,7 @@ export default function LiveVisionVoiceStudio() {
           const drawW = isSwapped ? targetHeight : targetWidth;
           const drawH = isSwapped ? targetWidth : targetHeight;
           ctx.drawImage(video, -drawW / 2, -drawH / 2, drawW, drawH);
-          return canvas.toDataURL('image/jpeg', 0.82);
+          return canvas.toDataURL('image/jpeg', 0.76);
         }
       } catch (e) {
         console.warn('Frame capture error:', e);
@@ -550,8 +550,8 @@ export default function LiveVisionVoiceStudio() {
     const checkFrame = (timestamp: number) => {
       if (!autoDetectActiveRef.current) return;
 
-      // Throttle checking to every 250ms to save CPU & GPU
-      if (timestamp - lastCheckTime < 250) {
+      // Fast checking every 180ms for instant millisecond response
+      if (timestamp - lastCheckTime < 180) {
         animFrameId = requestAnimationFrame(checkFrame);
         return;
       }
@@ -591,19 +591,19 @@ export default function LiveVisionVoiceStudio() {
           stableFrameCount++;
         }
 
-        // TRIGGER CONDITIONS:
-        // 1. Initial scan: Camera steady for 3 intervals (~750ms) after hardware startup (1.5s)
+        // TRIGGER CONDITIONS (Accelerated for instant millisecond optical scanning):
+        // 1. Initial scan: Camera steady for 2 intervals (~360ms) after hardware startup (400ms)
         const isInitialScan =
           analysisCountRef.current === 0 &&
           !analyzedDataRef.current &&
-          timeSinceCameraStart > 1500 &&
-          stableFrameCount >= 3;
+          timeSinceCameraStart > 400 &&
+          stableFrameCount >= 2;
 
-        // 2. Motion settled: User moved product in front of camera, now steady for 4 intervals (~1.0s)
-        const isMotionSettled = motionDetected && stableFrameCount >= 4 && timeSinceLastScan > 3500;
+        // 2. Motion settled: User showed/changed product, steady for 2 intervals (~360ms) after 1.5s
+        const isMotionSettled = motionDetected && stableFrameCount >= 2 && timeSinceLastScan > 1500;
 
-        // 3. Periodic sanity rescan: stationary camera, every 12 seconds
-        const isPeriodicRescan = timeSinceLastScan > 12000 && stableFrameCount >= 4;
+        // 3. Periodic sanity rescan: stationary camera, every 8 seconds
+        const isPeriodicRescan = timeSinceLastScan > 8000 && stableFrameCount >= 3;
 
         if (isInitialScan || isMotionSettled || isPeriodicRescan) {
           motionDetected = false;

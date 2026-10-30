@@ -587,7 +587,15 @@ export class BolnaVoiceController {
    * Layer 2: Neural Noise Suppression & Silero VAD Audio DSP Graph
    */
   private async startDirectMicAndRecognition() {
-    if (typeof window !== 'undefined' && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+    const isMobile =
+      typeof navigator !== 'undefined' &&
+      /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+    // On mobile devices (specifically Android Chrome), NEVER open getUserMedia({ audio: true })
+    // while webkitSpeechRecognition is active! Android OS Speech Services blocks capture with:
+    // "Speech Recognition and Synthesis from Google cannot record now as Chrome is recording".
+    // Skipping getUserMedia on mobile gives Speech Recognition 100% exclusive, unobstructed microphone access.
+    if (!isMobile && typeof window !== 'undefined' && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
       try {
         if (!this.audioContext) this.initAudioContext();
         if (this.audioContext && this.audioContext.state === 'suspended') {
@@ -660,14 +668,14 @@ export class BolnaVoiceController {
           vadCompressor.connect(this.analyserNode);
 
           this.micDspNodes = [highPass, notch50, voiceBand, lowPass, vadCompressor];
-
-          // Start continuous visualizer & Silero-style VAD loop
-          this.startFrequencyTracker();
         }
       } catch (micErr) {
-        console.warn('Microphone audio stream notice:', micErr);
+        console.warn('Desktop microphone audio stream notice:', micErr);
       }
     }
+
+    // Always start continuous visualizer tracker
+    this.startFrequencyTracker();
 
     // 2. Start Speech Recognition
     this.startBrowserSpeechRecognition();
@@ -732,6 +740,11 @@ export class BolnaVoiceController {
         const candidate = (this.accumulatedFinalTranscript + ' ' + interimTranscript).replace(/[\u2014\u2013—–]/g, '-').replace(/\s+/g, ' ').trim();
 
         if (candidate) {
+          // Boost mobile orb visual volume while user is actively speaking
+          if (!this.micSourceNode && this.callbacks.onVolumeChange) {
+            this.callbacks.onVolumeChange(0.68);
+          }
+
           // Live UI transcript display in English (instant visual feedback with zero latency)
           const isDevanagari = /[\u0900-\u097F]/.test(candidate);
           const isHinglish = /\b(kya|ye|yeh|hai|kaunsa|kaunsi|kaisa|kaisi|batao|suno|khao|nahi|acha|achhi|kitna|kitni|dono)\b/i.test(candidate);
@@ -1510,11 +1523,26 @@ export class BolnaVoiceController {
           this.callbacks.onFrequencyData(simData);
         }
       } else {
-        if (this.callbacks.onVolumeChange) {
-          this.callbacks.onVolumeChange(avg);
-        }
-        if (this.callbacks.onFrequencyData) {
-          this.callbacks.onFrequencyData(dataArray);
+        if (this.micSourceNode) {
+          if (this.callbacks.onVolumeChange) {
+            this.callbacks.onVolumeChange(avg);
+          }
+          if (this.callbacks.onFrequencyData) {
+            this.callbacks.onFrequencyData(dataArray);
+          }
+        } else {
+          // Mobile listening mode: subtle responsive breath oscillation
+          const simVol = 0.08 + 0.05 * Math.sin(Date.now() * 0.005);
+          const simData = new Uint8Array(dataArray.length || 32);
+          for (let i = 0; i < simData.length; i++) {
+            simData[i] = Math.floor(simVol * 150 * Math.abs(Math.sin(i * 0.3 + Date.now() * 0.004)));
+          }
+          if (this.callbacks.onVolumeChange) {
+            this.callbacks.onVolumeChange(simVol);
+          }
+          if (this.callbacks.onFrequencyData) {
+            this.callbacks.onFrequencyData(simData);
+          }
         }
       }
 
