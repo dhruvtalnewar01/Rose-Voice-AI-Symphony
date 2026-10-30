@@ -17,24 +17,19 @@ try {
 
   execSync('npx next build', { stdio: 'inherit' });
 
-  // 1. Copy _redirects
-  if (fs.existsSync('public/_redirects')) {
-    fs.copyFileSync('public/_redirects', 'out/_redirects');
-  }
+  // 1. Generate rock-solid out/_redirects for Netlify static drop
+  const staticRedirects = [
+    '# Netlify Static Asset Rules - Preserve JS chunks and assets from HTML hijacking',
+    '/_next/*  /_next/:splat  200',
+    '/audio/*  /audio/:splat  200',
+    '/assets/* /assets/:splat 200',
+    '/models/* /models/:splat 200',
+    '/*        /index.html    200',
+    '',
+  ].join('\n');
+  fs.writeFileSync('out/_redirects', staticRedirects, 'utf8');
 
-  // 2. Package Netlify serverless functions alongside out folder
-  const netlifyFuncSrc = path.join(__dirname, '..', 'netlify', 'functions');
-  const netlifyFuncDest = path.join(__dirname, '..', 'out', '.netlify', 'functions');
-
-  if (fs.existsSync(netlifyFuncSrc)) {
-    fs.mkdirSync(netlifyFuncDest, { recursive: true });
-    const files = fs.readdirSync(netlifyFuncSrc);
-    for (const f of files) {
-      fs.copyFileSync(path.join(netlifyFuncSrc, f), path.join(netlifyFuncDest, f));
-    }
-  }
-
-  console.log('Static export complete: out/ folder generated successfully with _redirects and Netlify functions.');
+  console.log('Static export complete: out/ folder generated successfully with static asset safe _redirects.');
 } catch (err) {
   console.error('Static export failed:', err);
   process.exit(1);

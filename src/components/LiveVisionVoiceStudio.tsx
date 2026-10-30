@@ -37,7 +37,6 @@ import {
 } from 'lucide-react';
 import VoiceAiOrb from './VoiceAiOrb';
 import { BolnaVoiceController, VoiceStatus, VoiceLanguage } from '@/lib/bolnaVoiceController';
-import { analyzeImageClientSide } from '@/lib/clientVisionEngine';
 
 export interface HealthVerdict {
   classification: 'HEALTHY' | 'MODERATE' | 'UNHEALTHY' | 'NOT_APPLICABLE';
@@ -464,7 +463,7 @@ export default function LiveVisionVoiceStudio() {
 
         // When rotated 90 or 270 on phone, swap width/height so AI vision receives upright frame
         const isSwapped = rotationAngle === 90 || rotationAngle === 270;
-        const targetWidth = Math.min(isSwapped ? rawH : rawW, 1024);
+        const targetWidth = Math.min(isSwapped ? rawH : rawW, 800);
         const targetHeight = Math.round((targetWidth / (isSwapped ? rawH : rawW)) * (isSwapped ? rawW : rawH));
 
         canvas.width = targetWidth;
@@ -479,7 +478,7 @@ export default function LiveVisionVoiceStudio() {
           const drawW = isSwapped ? targetHeight : targetWidth;
           const drawH = isSwapped ? targetWidth : targetHeight;
           ctx.drawImage(video, -drawW / 2, -drawH / 2, drawW, drawH);
-          return canvas.toDataURL('image/jpeg', 0.9);
+          return canvas.toDataURL('image/jpeg', 0.82);
         }
       } catch (e) {
         console.warn('Frame capture error:', e);
@@ -508,7 +507,10 @@ export default function LiveVisionVoiceStudio() {
 
         const contentType = response.headers.get('content-type') || '';
         if (!response.ok || contentType.includes('text/html')) {
-          throw new Error('Vision API route unavailable or redirected to HTML on static host');
+          const errorMsg = contentType.includes('text/html')
+            ? 'API route returned HTML instead of JSON. Ensure site environment variables are set in Netlify.'
+            : `Analysis server returned status ${response.status}`;
+          throw new Error(errorMsg);
         }
 
         const data: AnalyzedObject = await response.json();
@@ -519,19 +521,8 @@ export default function LiveVisionVoiceStudio() {
         if (voiceControllerRef.current) {
           voiceControllerRef.current.setVisualContext(data);
         }
-      } catch (err) {
-        console.warn('Backend vision route notice, activating autonomous client vision engine:', err);
-        try {
-          const fallbackData = await analyzeImageClientSide(base64);
-          setAnalyzedData(fallbackData);
-          setAnalysisCount(prev => prev + 1);
-
-          if (voiceControllerRef.current) {
-            voiceControllerRef.current.setVisualContext(fallbackData);
-          }
-        } catch (clientErr) {
-          console.error('Client vision analysis error:', clientErr);
-        }
+      } catch (err: any) {
+        console.error('Vision analysis error:', err);
       } finally {
         setIsAnalyzing(false);
       }
