@@ -1,1 +1,6 @@
+/api/vision-analyze /.netlify/functions/vision-analyze 200
+/api/voice-stream /.netlify/functions/voice-stream 200
+/api/voice-chat /.netlify/functions/voice-chat 200
+/api/outbound-call /.netlify/functions/outbound-call 200
+/api/* 404
 /* /index.html 200

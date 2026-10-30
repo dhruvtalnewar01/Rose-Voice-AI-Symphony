@@ -1106,8 +1106,9 @@ export class BolnaVoiceController {
         }),
       });
 
-      if (!response.ok || !response.body) {
-        throw new Error('Streaming connection failed, using fallback');
+      const contentType = response.headers.get('content-type') || '';
+      if (!response.ok || !response.body || contentType.includes('text/html') || !contentType.includes('text/event-stream')) {
+        throw new Error('Streaming API unavailable or redirected to HTML on static host, using fallback');
       }
 
       const reader = response.body.getReader();
@@ -1150,6 +1151,10 @@ export class BolnaVoiceController {
         .split(/[\r\n]+/)[0]
         .trim()
         .replace(/[\u2014\u2013—–]/g, '-');
+
+      if (!finalText) {
+        throw new Error('Zero tokens received from stream, engaging autonomous conversational fallback');
+      }
 
       if (this.callbacks.onAssistantTranscript) {
         this.callbacks.onAssistantTranscript(finalText);
@@ -1348,7 +1353,11 @@ export class BolnaVoiceController {
         }),
       });
 
-      if (!chatRes.ok) throw new Error('Voice chat request failed');
+      const contentType = chatRes.headers.get('content-type') || '';
+      if (!chatRes.ok || contentType.includes('text/html')) {
+        throw new Error('Voice chat API unavailable or redirected to HTML on static host');
+      }
+
       const { replyText, englishUserQuery } = await chatRes.json();
       const sanitizedReply = (replyText || '')
         .replace(/\baww+[,!\s\.\-]*/gi, '')
@@ -1373,9 +1382,11 @@ export class BolnaVoiceController {
 
       await this.speakFullLine(sanitizedReply);
     } catch (err) {
-      console.warn('Backend API notice, utilizing local spatial grounding engine:', err);
-      const instant = this.tryInstantSpatialGrounding(trimmed) ||
-        `${this.getNextDeckOpener()} scan ke mutabiq product details visible hain. Aap iske nutrition ya ingredients ke baare me pooch sakte hain!`;
+      console.warn('Backend API notice, utilizing autonomous spatial & NLP engine:', err);
+      let instant = this.tryInstantSpatialGrounding(trimmed);
+      if (!instant) {
+        instant = this.generateAutonomousHinglishReply(trimmed, currentProduct);
+      }
 
       if (this.callbacks.onAssistantTranscript) {
         this.callbacks.onAssistantTranscript(instant);
@@ -1388,6 +1399,52 @@ export class BolnaVoiceController {
       });
       await this.speakFullLine(instant);
     }
+  }
+
+  /**
+   * Autonomous Hinglish Natural Language Generator
+   * Provides fluent, intelligent, empathetic conversational responses in static/Netlify environments
+   */
+  private generateAutonomousHinglishReply(query: string, currentProduct: string): string {
+    const q = query.toLowerCase();
+    const opener = this.getNextDeckOpener();
+
+    // 1. Greeting intent
+    if (/\b(hello|hi|namaste|hey|suno|helo)\b/i.test(q)) {
+      return `${opener} Namaste! Main IRA hoon. Main camera ke samne rakhe kisi bhi food ya medicine product ko live verify kar sakti hoon!`;
+    }
+
+    // 2. Identity intent
+    if (/\b(kaun|who are you|kya karti ho|tumhara naam|your name)\b/i.test(q)) {
+      return `Haan ji! Main IRA hoon, aapki autonomous spatial vision aur healthcare voice assistant. Aap mujhe medicines ya grocery dikhayein, main unke ingredients aur clinical warnings turant check karungi!`;
+    }
+
+    // 3. Status intent
+    if (/\b(kaise ho|kaisi ho|how are you|kya chal raha)\b/i.test(q)) {
+      return `${opener} Main bil-kul badiya aur ready hoon! Aap camera ke samne koi product hold karein, main turant scan karke bataungi!`;
+    }
+
+    // 4. Product inquiry intent when product is visible
+    if (this.visualContext && currentProduct && currentProduct !== 'No product in view') {
+      const title = this.visualContext.object_title || currentProduct;
+      const verdict = this.visualContext.health_verdict?.classification || 'HEALTHY';
+      const reason = this.visualContext.health_verdict?.reason || 'ingredients balanced hain';
+
+      if (/\b(kya he|kya hai|what is this|ye kya|yeh kya)\b/i.test(q)) {
+        return `${opener} Ye ${title} he. Scan ke according iska health status ${verdict.toLowerCase()} he, basically ${reason}!`;
+      }
+
+      if (/\b(khao|kha sakte|consume|use|safe|theek)\b/i.test(q)) {
+        return `${opener} ${title} scan ho chuka he. Iska verdict ${verdict.toLowerCase()} he. Dhyan rahe: ${reason}!`;
+      }
+    }
+
+    // 5. Open-ended question fallback
+    if (currentProduct && currentProduct !== 'No product in view') {
+      return `${opener} ${currentProduct} ke scan ke mutabiq details frame me load ho chuki hain. Aap iske sugar, sodium ya safety warnings ke baare me pooch sakte hain!`;
+    }
+
+    return `${opener} main aapki voice sun rahi hoon! Camera ke aage koi bhi medicine ya grocery packet dikhayein, main real time me analyze karungi!`;
   }
 
   /**

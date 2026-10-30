@@ -37,6 +37,7 @@ import {
 } from 'lucide-react';
 import VoiceAiOrb from './VoiceAiOrb';
 import { BolnaVoiceController, VoiceStatus, VoiceLanguage } from '@/lib/bolnaVoiceController';
+import { analyzeImageClientSide } from '@/lib/clientVisionEngine';
 
 export interface HealthVerdict {
   classification: 'HEALTHY' | 'MODERATE' | 'UNHEALTHY' | 'NOT_APPLICABLE';
@@ -505,7 +506,11 @@ export default function LiveVisionVoiceStudio() {
           body: JSON.stringify({ imageBase64: base64 }),
         });
 
-        if (!response.ok) throw new Error('Vision analyze failed');
+        const contentType = response.headers.get('content-type') || '';
+        if (!response.ok || contentType.includes('text/html')) {
+          throw new Error('Vision API route unavailable or redirected to HTML on static host');
+        }
+
         const data: AnalyzedObject = await response.json();
         setAnalyzedData(data);
         setAnalysisCount(prev => prev + 1);
@@ -515,7 +520,18 @@ export default function LiveVisionVoiceStudio() {
           voiceControllerRef.current.setVisualContext(data);
         }
       } catch (err) {
-        console.error('Vision analysis error:', err);
+        console.warn('Backend vision route notice, activating autonomous client vision engine:', err);
+        try {
+          const fallbackData = await analyzeImageClientSide(base64);
+          setAnalyzedData(fallbackData);
+          setAnalysisCount(prev => prev + 1);
+
+          if (voiceControllerRef.current) {
+            voiceControllerRef.current.setVisualContext(fallbackData);
+          }
+        } catch (clientErr) {
+          console.error('Client vision analysis error:', clientErr);
+        }
       } finally {
         setIsAnalyzing(false);
       }
