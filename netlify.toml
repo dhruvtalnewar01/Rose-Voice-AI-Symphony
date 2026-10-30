@@ -1,0 +1,25 @@
+# Netlify Configuration for Rose Voice AI Symphony
+# https://github.com/dhruvtalnewar01/Rose-Voice-AI-Symphony
+
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# Permissions & Security Policies (Required for Camera & Web Audio mic access)
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(self), microphone=(self)"
+
+# Real-Time SSE Token Streaming & Voice Chat Optimization
+[[headers]]
+  for = "/api/*"
+  [headers.values]
+    Cache-Control = "no-cache, no-transform"
+    X-Accel-Buffering = "no"

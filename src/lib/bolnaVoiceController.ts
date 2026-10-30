@@ -1373,12 +1373,20 @@ export class BolnaVoiceController {
 
       await this.speakFullLine(sanitizedReply);
     } catch (err) {
-      console.error('Voice query error:', err);
-      this.isProcessingQuery = false;
-      this.isThinking = false;
-      this.isSpeaking = false;
-      this.setStatus('listening');
-      this.startBrowserSpeechRecognition();
+      console.warn('Backend API notice, utilizing local spatial grounding engine:', err);
+      const instant = this.tryInstantSpatialGrounding(trimmed) ||
+        `${this.getNextDeckOpener()} scan ke mutabiq product details visible hain. Aap iske nutrition ya ingredients ke baare me pooch sakte hain!`;
+
+      if (this.callbacks.onAssistantTranscript) {
+        this.callbacks.onAssistantTranscript(instant);
+      }
+      this.conversationHistory.push({
+        role: 'assistant',
+        content: instant,
+        productContext: currentProduct,
+        timestamp: Date.now(),
+      });
+      await this.speakFullLine(instant);
     }
   }
 
