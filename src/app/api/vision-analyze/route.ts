@@ -222,6 +222,11 @@ export async function POST(req: NextRequest) {
 3. MULTI-OBJECT DETECTION: If multiple distinct products or items are visible (e.g. 2 different snacks, 2 medicine strips, a drink and biscuits, multiple textbook pages), detect ALL of them individually in detected_objects!
 4. Provide precise bounding box coordinates (0-100 percentage) for each individual object covering its exact location across the screen.
 
+## MOBILE SMARTPHONE CAMERAS & ORIENTATION AGNOSTIC:
+1. Mobile phone users often hold devices in portrait (vertical) or landscape, holding multiple products side-by-side or stacked.
+2. You MUST detect EVERY distinct product visible in the frame as a separate item in detected_objects. If 2 or more products are visible, detected_objects MUST contain 2 or more items.
+3. Accurately detect product branding, labels, and text regardless of orientation, tilt, or phone angle.
+
 ## MULTI-OBJECT COMPARATIVE VERDICT ("Which one is the better option?"):
 - When 2 or more products are detected:
   - Set comparative_analysis.is_multi_object = true
@@ -267,7 +272,7 @@ export async function POST(req: NextRequest) {
         content: [
           {
             type: 'text',
-            text: 'Perform fast edge-to-edge optical scan. Detect all products and classify health verdict with sub-second precision.',
+            text: 'Perform an exhaustive edge-to-edge optical scan across the ENTIRE frame (left, center, right, top, bottom). Detect ALL products visible. If 2 or more products are visible, you MUST return separate items in detected_objects for each one, calculate exact bounding boxes, and deliver a clear comparative analysis declaring which one is better.',
           },
           {
             type: 'image_url',
@@ -286,7 +291,7 @@ export async function POST(req: NextRequest) {
       response = await openai.chat.completions.create({
         model: 'gpt-4o-mini',
         temperature: 0.0,
-        max_tokens: 420,
+        max_tokens: 1200,
         response_format: {
           type: 'json_schema',
           json_schema: multiObjectVisionSchema,
@@ -298,7 +303,7 @@ export async function POST(req: NextRequest) {
         response = await openai.chat.completions.create({
           model: 'gpt-4o-2024-08-06',
           temperature: 0.0,
-          max_tokens: 420,
+          max_tokens: 1200,
           response_format: {
             type: 'json_schema',
             json_schema: multiObjectVisionSchema,
@@ -309,7 +314,7 @@ export async function POST(req: NextRequest) {
         response = await openai.chat.completions.create({
           model: 'gpt-4o',
           temperature: 0.0,
-          max_tokens: 420,
+          max_tokens: 1200,
           response_format: {
             type: 'json_schema',
             json_schema: multiObjectVisionSchema,

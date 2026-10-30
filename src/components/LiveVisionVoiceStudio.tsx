@@ -165,6 +165,7 @@ export default function LiveVisionVoiceStudio() {
 
   // Detection & Analysis state
   const [analyzedData, setAnalyzedData] = useState<AnalyzedObject | null>(null);
+  const [selectedObjectIndex, setSelectedObjectIndex] = useState<number>(0);
   const lastAnalyzedTimeRef = useRef<number>(0);
   const autoDetectActiveRef = useRef<boolean>(true);
   const analysisQueueRef = useRef<boolean>(false);
@@ -463,7 +464,7 @@ export default function LiveVisionVoiceStudio() {
 
         // When rotated 90 or 270 on phone, swap width/height so AI vision receives upright frame
         const isSwapped = rotationAngle === 90 || rotationAngle === 270;
-        const targetWidth = Math.min(isSwapped ? rawH : rawW, 640);
+        const targetWidth = Math.min(isSwapped ? rawH : rawW, 768);
         const targetHeight = Math.round((targetWidth / (isSwapped ? rawH : rawW)) * (isSwapped ? rawW : rawH));
 
         canvas.width = targetWidth;
@@ -478,7 +479,7 @@ export default function LiveVisionVoiceStudio() {
           const drawW = isSwapped ? targetHeight : targetWidth;
           const drawH = isSwapped ? targetWidth : targetHeight;
           ctx.drawImage(video, -drawW / 2, -drawH / 2, drawW, drawH);
-          return canvas.toDataURL('image/jpeg', 0.76);
+          return canvas.toDataURL('image/jpeg', 0.84);
         }
       } catch (e) {
         console.warn('Frame capture error:', e);
@@ -515,6 +516,7 @@ export default function LiveVisionVoiceStudio() {
 
         const data: AnalyzedObject = await response.json();
         setAnalyzedData(data);
+        setSelectedObjectIndex(0);
         setAnalysisCount(prev => prev + 1);
 
         // Sync visual context with active Voice AI session (Voice AI remains silent until user speaks)
@@ -662,6 +664,14 @@ export default function LiveVisionVoiceStudio() {
     } else {
       setUserTranscript('');
       setAssistantTranscript('');
+      // AudioContext & SpeechSynthesis mobile user-gesture unlock
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        try {
+          if (window.speechSynthesis.paused) {
+            window.speechSynthesis.resume();
+          }
+        } catch {}
+      }
       // Instant Connection: Never block voice session on optical analysis
       if (!analyzedData && !isAnalyzingRef.current) {
         runVisionAnalysis();
@@ -670,17 +680,23 @@ export default function LiveVisionVoiceStudio() {
     }
   };
 
+  const activeDisplayObject =
+    analyzedData?.detected_objects && analyzedData.detected_objects.length > 0
+      ? (analyzedData.detected_objects[selectedObjectIndex] || analyzedData.detected_objects[0])
+      : analyzedData;
+
   const handleCopyOcr = () => {
-    if (analyzedData?.extracted_text_ocr) {
-      navigator.clipboard.writeText(analyzedData.extracted_text_ocr);
+    const ocrText = activeDisplayObject?.extracted_text_ocr || analyzedData?.extracted_text_ocr;
+    if (ocrText) {
+      navigator.clipboard.writeText(ocrText);
       setIsCopied(true);
       setTimeout(() => setIsCopied(false), 2000);
     }
   };
 
-  // Get health badge config
-  const healthBadge = analyzedData?.health_verdict
-    ? healthBadgeConfig[analyzedData.health_verdict.classification] || healthBadgeConfig.NOT_APPLICABLE
+  // Get health badge config for actively selected product
+  const healthBadge = activeDisplayObject?.health_verdict
+    ? healthBadgeConfig[activeDisplayObject.health_verdict.classification] || healthBadgeConfig.NOT_APPLICABLE
     : null;
 
   return (
@@ -1213,12 +1229,17 @@ export default function LiveVisionVoiceStudio() {
                     ? healthBadgeConfig[obj.health_verdict.classification as keyof typeof healthBadgeConfig]
                     : null;
 
+                  const isSelected = selectedObjectIndex === idx;
+
                   return (
                     <motion.div
                       key={obj.id || idx}
                       initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      className="absolute pointer-events-none transition-all duration-300 z-10"
+                      animate={{ opacity: 1, scale: isSelected ? 1.02 : 1 }}
+                      onClick={() => setSelectedObjectIndex(idx)}
+                      className={`absolute pointer-events-auto cursor-pointer transition-all duration-300 z-10 ${
+                        isSelected ? 'ring-2 ring-white/90 shadow-2xl' : ''
+                      }`}
                       style={{
                         left: `${box.x}%`,
                         top: `${box.y}%`,
@@ -1457,9 +1478,49 @@ export default function LiveVisionVoiceStudio() {
                   )}
                 </motion.div>
               )}
+              {/* Multi-Product Selector Tabs (When 2+ Products are in camera view) */}
+              {analyzedData.detected_objects && analyzedData.detected_objects.length > 1 && (
+                <div className="p-3 rounded-2xl bg-white/95 backdrop-blur-xl border border-slate-200/90 shadow-xs flex flex-col gap-2">
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-500">
+                    Detected Items in Camera Frame ({analyzedData.detected_objects.length}):
+                  </span>
+                  <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+                    {analyzedData.detected_objects.map((item, idx) => {
+                      const isSelected = selectedObjectIndex === idx;
+                      const hBadge = item.health_verdict
+                        ? healthBadgeConfig[item.health_verdict.classification as keyof typeof healthBadgeConfig]
+                        : null;
+                      return (
+                        <button
+                          key={item.id || idx}
+                          type="button"
+                          onClick={() => setSelectedObjectIndex(idx)}
+                          className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
+                            isSelected
+                              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25 scale-[1.02]'
+                              : 'bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700'
+                          }`}
+                        >
+                          <span className="w-2 h-2 rounded-full bg-cyan-400" />
+                          <span className="truncate max-w-[140px]">{item.object_title || `Item ${idx + 1}`}</span>
+                          {hBadge && item.health_verdict?.classification !== 'NOT_APPLICABLE' && (
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-mono ${
+                              isSelected ? 'bg-white/20 text-white' : `${hBadge.bg} ${hBadge.text} border ${hBadge.border}`
+                            }`}>
+                              {item.health_verdict.classification}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {/* Card 0: Health Verdict Banner */}
-              {analyzedData.health_verdict && analyzedData.health_verdict.classification !== 'NOT_APPLICABLE' && healthBadge && (
+              {activeDisplayObject?.health_verdict && activeDisplayObject.health_verdict.classification !== 'NOT_APPLICABLE' && healthBadge && (
                 <motion.div
+                  key={`health-${selectedObjectIndex}`}
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   className={`p-4 rounded-3xl border-2 ${healthBadge.border} ${healthBadge.bg} shadow-lg ${healthBadge.glow} flex flex-col gap-2.5`}
@@ -1467,8 +1528,8 @@ export default function LiveVisionVoiceStudio() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
                       <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${
-                        analyzedData.health_verdict.classification === 'HEALTHY' ? 'bg-emerald-100' :
-                        analyzedData.health_verdict.classification === 'MODERATE' ? 'bg-amber-100' :
+                        activeDisplayObject.health_verdict.classification === 'HEALTHY' ? 'bg-emerald-100' :
+                        activeDisplayObject.health_verdict.classification === 'MODERATE' ? 'bg-amber-100' :
                         'bg-rose-100'
                       }`}>
                         <healthBadge.icon className={`w-5 h-5 ${healthBadge.iconColor}`} />
@@ -1478,17 +1539,17 @@ export default function LiveVisionVoiceStudio() {
                           {healthBadge.label}
                         </span>
                         <p className="text-[11px] text-slate-600 font-medium leading-snug mt-0.5 max-w-xs">
-                          {analyzedData.health_verdict.reason}
+                          {activeDisplayObject.health_verdict.reason}
                         </p>
                       </div>
                     </div>
                   </div>
 
                   {/* Risk Factors */}
-                  {analyzedData.health_verdict.risk_factors.length > 0 && (
+                  {activeDisplayObject.health_verdict.risk_factors.length > 0 && (
                     <div className="flex flex-col gap-1.5 mt-1">
                       <span className="text-[10px] font-mono uppercase tracking-wider font-bold text-slate-500">Risk Factors</span>
-                      {analyzedData.health_verdict.risk_factors.map((risk, idx) => (
+                      {activeDisplayObject.health_verdict.risk_factors.map((risk, idx) => (
                         <div key={idx} className="flex items-start gap-1.5 text-[11px] text-rose-700 font-medium">
                           <AlertTriangle className="w-3 h-3 text-rose-500 shrink-0 mt-0.5" />
                           <span>{risk}</span>
@@ -1498,10 +1559,10 @@ export default function LiveVisionVoiceStudio() {
                   )}
 
                   {/* Safety Warnings */}
-                  {analyzedData.health_verdict.safety_warnings.length > 0 && (
+                  {activeDisplayObject.health_verdict.safety_warnings.length > 0 && (
                     <div className="flex flex-col gap-1.5 mt-1">
                       <span className="text-[10px] font-mono uppercase tracking-wider font-bold text-slate-500">Safety Warnings</span>
-                      {analyzedData.health_verdict.safety_warnings.map((warning, idx) => (
+                      {activeDisplayObject.health_verdict.safety_warnings.map((warning, idx) => (
                         <div key={idx} className="flex items-start gap-1.5 text-[11px] text-amber-800 font-medium bg-amber-100/50 px-2 py-1 rounded-lg">
                           <ShieldAlert className="w-3 h-3 text-amber-600 shrink-0 mt-0.5" />
                           <span>{warning}</span>
@@ -1513,53 +1574,53 @@ export default function LiveVisionVoiceStudio() {
               )}
 
               {/* Card 1: Object Overview */}
-              <div className="p-5 rounded-3xl glass-white border border-slate-200/80 shadow-glass-card flex flex-col gap-3">
+              <div key={`overview-${selectedObjectIndex}`} className="p-5 rounded-3xl glass-white border border-slate-200/80 shadow-glass-card flex flex-col gap-3">
                 <div className="flex items-center justify-between">
                   <span className="px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-xs font-mono font-bold text-blue-700">
-                    {analyzedData.category.replace('_', ' ')}
+                    {(activeDisplayObject?.category || 'GENERAL_OBJECT').replace('_', ' ')}
                   </span>
                   <span className="text-xs font-mono text-slate-500 font-medium">
-                    Confidence: {(analyzedData.confidence * 100).toFixed(0)}%
+                    Confidence: {((activeDisplayObject?.confidence || 0) * 100).toFixed(0)}%
                   </span>
                 </div>
 
                 <div>
                   <h3 className="text-xl font-bold text-ink-primary font-sans leading-tight">
-                    {analyzedData.object_title}
+                    {activeDisplayObject?.object_title || 'Detected Object'}
                   </h3>
                   <p className="text-xs font-medium text-slate-600 mt-1 leading-relaxed">
-                    {analyzedData.headline_summary}
+                    {activeDisplayObject?.headline_summary}
                   </p>
                 </div>
 
                 {/* Cross-Verification Badge */}
-                {analyzedData.cross_verification && (
+                {activeDisplayObject?.cross_verification && (
                   <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-[11px] font-medium ${
-                    analyzedData.cross_verification.verified
+                    activeDisplayObject.cross_verification.verified
                       ? 'bg-emerald-50 border border-emerald-200 text-emerald-800'
                       : 'bg-slate-50 border border-slate-200 text-slate-600'
                   }`}>
-                    {analyzedData.cross_verification.verified ? (
+                    {activeDisplayObject.cross_verification.verified ? (
                       <BadgeCheck className="w-3.5 h-3.5 text-emerald-600" />
                     ) : (
                       <Info className="w-3.5 h-3.5 text-slate-500" />
                     )}
                     <span>
-                      {analyzedData.cross_verification.verified ? 'Verified' : 'Unverified'} via {analyzedData.cross_verification.source}
+                      {activeDisplayObject.cross_verification.verified ? 'Verified' : 'Unverified'} via {activeDisplayObject.cross_verification.source}
                     </span>
                   </div>
                 )}
               </div>
 
               {/* Card 2: Structured Attributes */}
-              {analyzedData.structured_attributes && analyzedData.structured_attributes.length > 0 && (
-                <div className="p-5 rounded-3xl glass-white border border-slate-200/80 shadow-glass-card flex flex-col gap-3">
+              {activeDisplayObject?.structured_attributes && activeDisplayObject.structured_attributes.length > 0 && (
+                <div key={`attrs-${selectedObjectIndex}`} className="p-5 rounded-3xl glass-white border border-slate-200/80 shadow-glass-card flex flex-col gap-3">
                   <h4 className="text-xs font-mono uppercase tracking-wider font-bold text-slate-500">
                     Key Structured Attributes
                   </h4>
 
                   <div className="flex flex-col gap-2">
-                    {analyzedData.structured_attributes.map((attr, idx) => (
+                    {activeDisplayObject.structured_attributes.map((attr, idx) => (
                       <div
                         key={idx}
                         className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200/60 text-xs"
@@ -1583,15 +1644,15 @@ export default function LiveVisionVoiceStudio() {
               )}
 
               {/* Card 3: Actionable Insights */}
-              {analyzedData.actionable_insights && analyzedData.actionable_insights.length > 0 && (
-                <div className="p-5 rounded-3xl glass-white border border-slate-200/80 shadow-glass-card flex flex-col gap-3">
+              {activeDisplayObject?.actionable_insights && activeDisplayObject.actionable_insights.length > 0 && (
+                <div key={`insights-${selectedObjectIndex}`} className="p-5 rounded-3xl glass-white border border-slate-200/80 shadow-glass-card flex flex-col gap-3">
                   <h4 className="text-xs font-mono uppercase tracking-wider font-bold text-slate-500 flex items-center gap-1.5">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                     <span>Actionable Guidance</span>
                   </h4>
 
                   <ul className="flex flex-col gap-2">
-                    {analyzedData.actionable_insights.map((insight, idx) => (
+                    {activeDisplayObject.actionable_insights.map((insight, idx) => (
                       <li key={idx} className="flex items-start gap-2 text-xs text-slate-700 leading-relaxed">
                         <span className="w-1.5 h-1.5 rounded-full bg-blue-600 shrink-0 mt-1.5" />
                         <span>{insight}</span>
@@ -1602,8 +1663,8 @@ export default function LiveVisionVoiceStudio() {
               )}
 
               {/* Card 4: OCR Verbatim Extracted Text */}
-              {analyzedData.extracted_text_ocr && (
-                <div className="p-5 rounded-3xl glass-white border border-slate-200/80 shadow-glass-card flex flex-col gap-2.5">
+              {activeDisplayObject?.extracted_text_ocr && (
+                <div key={`ocr-${selectedObjectIndex}`} className="p-5 rounded-3xl glass-white border border-slate-200/80 shadow-glass-card flex flex-col gap-2.5">
                   <div className="flex items-center justify-between">
                     <h4 className="text-xs font-mono uppercase tracking-wider font-bold text-slate-500">
                       Extracted Text / OCR Evidence
@@ -1618,7 +1679,7 @@ export default function LiveVisionVoiceStudio() {
                   </div>
 
                   <p className="p-3 rounded-2xl bg-slate-50 border border-slate-200/80 text-xs font-mono text-slate-800 whitespace-pre-wrap leading-relaxed max-h-40 overflow-y-auto">
-                    {analyzedData.extracted_text_ocr}
+                    {activeDisplayObject.extracted_text_ocr}
                   </p>
                 </div>
               )}

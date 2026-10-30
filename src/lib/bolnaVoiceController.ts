@@ -694,12 +694,22 @@ export class BolnaVoiceController {
     }
 
     try {
+      const isMobile = typeof navigator !== 'undefined' && /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
       if (this.recognition) {
-        try { this.recognition.abort(); } catch {}
+        try {
+          this.recognition.onstart = null;
+          this.recognition.onresult = null;
+          this.recognition.onerror = null;
+          this.recognition.onend = null;
+          this.recognition.abort();
+        } catch {}
+        this.recognition = null;
       }
 
       this.recognition = new SpeechRec();
-      this.recognition.continuous = true;
+      // On mobile Android, continuous = false prevents Chrome from dropping sessions; onend automatically re-chains seamlessly
+      this.recognition.continuous = !isMobile;
       this.recognition.interimResults = true;
       this.recognition.maxAlternatives = 1;
       this.recognition.lang = this.language === 'en' ? 'en-IN' : 'hi-IN';
@@ -766,18 +776,17 @@ export class BolnaVoiceController {
           }
 
           // Production-Grade End-of-Turn Boundary:
-          // If a final phrase boundary was marked by speech recognizer: 800ms silence window allows natural pauses.
-          // If speech is only interim: require 1500ms silence AND at least 2 words with >= 6 characters.
-          // This eliminates premature cut-offs while the user is still speaking!
+          // If a final phrase boundary was marked by speech recognizer: 700ms silence window allows natural pauses.
+          // If speech is only interim: require 1200ms silence. Allows single or multi-word queries.
           const hasFinal = Boolean(newFinalTranscript || this.accumulatedFinalTranscript);
-          const delay = hasFinal ? 800 : 1500;
+          const delay = hasFinal ? 700 : 1200;
 
           this.speechDebounceTimer = setTimeout(async () => {
             const toProcess = (this.accumulatedFinalTranscript || candidate).trim();
             this.accumulatedFinalTranscript = '';
 
             const words = toProcess.split(/\s+/).filter(w => w.length > 0);
-            if (!this.isProcessingQuery && !this.isSpeaking && !this.isThinking && words.length >= 2 && toProcess.length >= 5) {
+            if (!this.isProcessingQuery && !this.isSpeaking && !this.isThinking && words.length >= 1 && toProcess.length >= 2) {
               await this.handleUserQuery(toProcess);
             }
           }, delay);
@@ -789,6 +798,13 @@ export class BolnaVoiceController {
           return;
         }
         console.warn('SpeechRecognition notice:', e.error);
+        if (e.error === 'network' || e.error === 'audio-capture' || e.error === 'not-allowed') {
+          setTimeout(() => {
+            if (this.status === 'listening' && !this.isSpeaking && !this.isThinking) {
+              this.startBrowserSpeechRecognition();
+            }
+          }, 500);
+        }
       };
 
       this.recognition.onend = () => {
@@ -796,11 +812,9 @@ export class BolnaVoiceController {
         if (this.status === 'listening' && !this.isProcessingQuery && !this.isSpeaking && !this.isThinking) {
           setTimeout(() => {
             if (this.status === 'listening' && !this.isSpeaking && !this.isThinking) {
-              try {
-                this.recognition.start();
-              } catch {}
+              this.startBrowserSpeechRecognition();
             }
-          }, 200);
+          }, 150);
         }
       };
 
@@ -1299,7 +1313,14 @@ export class BolnaVoiceController {
         }, maxExpectedMs);
 
         window.speechSynthesis.cancel();
+        if (window.speechSynthesis.paused) {
+          window.speechSynthesis.resume();
+        }
         window.speechSynthesis.speak(utter);
+        // Mobile Chrome / Safari quirk: unstick paused state immediately after speak call
+        if (window.speechSynthesis.paused) {
+          window.speechSynthesis.resume();
+        }
         return;
       } catch (synthErr) {
         console.warn('Speech synthesis issue, using audio fallback:', synthErr);

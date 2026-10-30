@@ -128,7 +128,7 @@ ${contextSummary}`;
       stream = await openai.chat.completions.create({
         model: 'gpt-4o-2024-11-20',
         temperature: 0.4,
-        max_tokens: 28,
+        max_tokens: 48,
         stream: true,
         messages,
       });
@@ -137,7 +137,7 @@ ${contextSummary}`;
         stream = await openai.chat.completions.create({
           model: 'gpt-4o-2024-08-06',
           temperature: 0.4,
-          max_tokens: 28,
+          max_tokens: 48,
           stream: true,
           messages,
         });
@@ -145,7 +145,7 @@ ${contextSummary}`;
         stream = await openai.chat.completions.create({
           model: 'gpt-4o',
           temperature: 0.4,
-          max_tokens: 28,
+          max_tokens: 48,
           stream: true,
           messages,
         });
