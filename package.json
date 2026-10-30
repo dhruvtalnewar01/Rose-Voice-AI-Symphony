@@ -1,0 +1,59 @@
+{
+  "name": "rose-voice-ai-symphony",
+  "version": "1.0.0",
+  "description": "Autonomous Multi-Modal Spatial Vision & Real-Time Voice AI Symphony powered by Bolna and OpenAI",
+  "main": "index.js",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dhruvtalnewar01/Rose-Voice-AI-Symphony.git"
+  },
+  "keywords": [
+    "voice-ai",
+    "bolna",
+    "openai",
+    "spatial-vision",
+    "multimodal-ai",
+    "mediapipe",
+    "react-three-fiber",
+    "webrtc",
+    "healthcare-ai"
+  ],
+  "author": "Dhruv Talnewar",
+  "license": "MIT",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/dhruvtalnewar01/Rose-Voice-AI-Symphony/issues"
+  },
+  "homepage": "https://github.com/dhruvtalnewar01/Rose-Voice-AI-Symphony#readme",
+  "dependencies": {
+    "@mediapipe/tasks-vision": "^1.1.1",
+    "@react-three/drei": "^10.7.9",
+    "@react-three/fiber": "^9.8.2",
+    "@types/node": "^26.6.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@types/three": "^0.186.0",
+    "clsx": "^2.1.1",
+    "framer-motion": "^14.6.0",
+    "lucide-react": "^1.61.0",
+    "next": "^16.4.3",
+    "next-transition-router": "^0.2.11",
+    "openai": "^7.45.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "tailwind-merge": "^3.7.0",
+    "three": "^0.186.1",
+    "typescript": "^7.0.2"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.6.2",
+    "postcss": "^8.5.32",
+    "tailwindcss": "^3.4.19"
+  }
+}

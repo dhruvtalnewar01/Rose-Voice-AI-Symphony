@@ -1,0 +1,455 @@
+@import url('https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;500;600;700&family=Silkscreen:wght@700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-primary: #FFFFFF;
+  --bg-secondary: #F8FAFC;
+  --bg-tertiary: #F1F5F9;
+  
+  --ink-primary: #0F172A;
+  --ink-secondary: #475569;
+  --ink-muted: #94A3B8;
+
+  --accent-cobalt: #2563EB;
+  --accent-emerald: #059669;
+  --accent-coral: #EA580C;
+  --accent-crimson: #E11D48;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  background-color: #FFFFFF;
+  color: #0F172A;
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: #FFFFFF;
+  color: #0F172A;
+  font-family: var(--font-plus-jakarta), -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ------------------------------------------------------------- */
+/* PURE WHITE TRANSLUCENT GLASS & 3D PERSPECTIVE TOKENS          */
+/* ------------------------------------------------------------- */
+
+.glass-white {
+  background: rgba(255, 255, 255, 0.86);
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 24px 60px -15px rgba(15, 23, 42, 0.07), 0 4px 16px -2px rgba(15, 23, 42, 0.03);
+}
+
+.glass-white-subtle {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  box-shadow: 0 10px 30px -10px rgba(15, 23, 42, 0.05);
+}
+
+/* ------------------------------------------------------------- */
+/* EXACT 3D LIQUID MORPHISM REPLICA (MATCHING USER REFERENCE)    */
+/* ------------------------------------------------------------- */
+
+/* Top Bar: Floating 3D Liquid Morphism Capsule with dual-side ambient colored caustics & refractive rim */
+.liquid-glass-nav-replica {
+  position: fixed;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.94) 0%, rgba(255, 255, 255, 0.82) 100%);
+  backdrop-filter: blur(32px) saturate(220%);
+  -webkit-backdrop-filter: blur(32px) saturate(220%);
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  box-shadow: 
+    -18px 0 36px -4px rgba(249, 115, 22, 0.32),
+    18px 0 36px -4px rgba(56, 189, 248, 0.38),
+    0 18px 38px -10px rgba(15, 23, 42, 0.16),
+    0 2px 8px 0 rgba(15, 23, 42, 0.04),
+    inset 0 1.5px 2px 0 #FFFFFF,
+    inset 0 -1.5px 2px 0 rgba(15, 23, 42, 0.05);
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+}
+
+.liquid-glass-nav-replica::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 4%;
+  right: 4%;
+  height: 48%;
+  border-radius: 9999px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.25) 70%, transparent 100%);
+  pointer-events: none;
+}
+
+.liquid-glass-nav-replica:hover {
+  box-shadow: 
+    -22px 0 46px -4px rgba(249, 115, 22, 0.42),
+    22px 0 46px -4px rgba(56, 189, 248, 0.48),
+    0 22px 48px -8px rgba(15, 23, 42, 0.2),
+    inset 0 2px 2.5px 0 #FFFFFF;
+}
+
+/* Liquid Glass Pill Button - Obsidian with Caustic Cyan/Blue Glow (Ref: Image 3 'Start project') */
+.liquid-glass-pill-dark {
+  position: relative;
+  border-radius: 9999px;
+  background: linear-gradient(180deg, rgba(24, 24, 27, 0.94) 0%, rgba(9, 9, 11, 0.98) 100%);
+  backdrop-filter: blur(20px);
+  border: 1.5px solid rgba(255, 255, 255, 0.28);
+  box-shadow: 
+    0 14px 28px -4px rgba(15, 23, 42, 0.45),
+    0 0 24px -2px rgba(56, 189, 248, 0.35),
+    inset 0 1.5px 1.5px 0 rgba(255, 255, 255, 0.55),
+    inset 0 -1.5px 2px 0 rgba(0, 0, 0, 0.5);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+}
+
+.liquid-glass-pill-dark::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 10%;
+  right: 10%;
+  height: 48%;
+  border-radius: 9999px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0.04) 75%, transparent 100%);
+  pointer-events: none;
+}
+
+.liquid-glass-pill-dark:hover {
+  transform: translateY(-2px);
+  box-shadow: 
+    0 18px 36px -4px rgba(15, 23, 42, 0.55),
+    0 0 32px 0 rgba(56, 189, 248, 0.55),
+    inset 0 2px 2px 0 rgba(255, 255, 255, 0.75);
+}
+
+/* Liquid Glass Pill Button - Warm Amber Saffron Caustic (Ref: Image 3 'Secondary') */
+.liquid-glass-pill-amber {
+  position: relative;
+  border-radius: 9999px;
+  background: linear-gradient(180deg, rgba(30, 27, 75, 0.92) 0%, rgba(15, 23, 42, 0.98) 100%);
+  backdrop-filter: blur(20px);
+  border: 1.5px solid rgba(255, 255, 255, 0.32);
+  box-shadow: 
+    0 14px 28px -4px rgba(15, 23, 42, 0.35),
+    0 0 26px -2px rgba(249, 115, 22, 0.45),
+    0 0 16px -2px rgba(234, 88, 12, 0.35),
+    inset 0 1.5px 1.5px 0 rgba(255, 255, 255, 0.6),
+    inset 0 -1.5px 2px 0 rgba(0, 0, 0, 0.4);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+}
+
+.liquid-glass-pill-amber::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 10%;
+  right: 10%;
+  height: 48%;
+  border-radius: 9999px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.38) 0%, rgba(255, 255, 255, 0.05) 75%, transparent 100%);
+  pointer-events: none;
+}
+
+.liquid-glass-pill-amber:hover {
+  transform: translateY(-2px);
+  box-shadow: 
+    0 18px 36px -4px rgba(15, 23, 42, 0.45),
+    0 0 34px 0 rgba(249, 115, 22, 0.65),
+    inset 0 2px 2px 0 rgba(255, 255, 255, 0.8);
+}
+
+/* Liquid Glass Pill Button - Luminous Emerald (Ref: Image 3 'Select') */
+.liquid-glass-pill-emerald {
+  position: relative;
+  border-radius: 9999px;
+  background: linear-gradient(180deg, rgba(6, 78, 59, 0.92) 0%, rgba(4, 47, 46, 0.98) 100%);
+  backdrop-filter: blur(20px);
+  border: 1.5px solid rgba(255, 255, 255, 0.32);
+  box-shadow: 
+    0 14px 28px -4px rgba(4, 47, 46, 0.35),
+    0 0 26px -2px rgba(16, 185, 129, 0.45),
+    inset 0 1.5px 1.5px 0 rgba(255, 255, 255, 0.6),
+    inset 0 -1.5px 2px 0 rgba(0, 0, 0, 0.4);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+}
+
+.liquid-glass-pill-emerald::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 10%;
+  right: 10%;
+  height: 48%;
+  border-radius: 9999px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.38) 0%, rgba(255, 255, 255, 0.05) 75%, transparent 100%);
+  pointer-events: none;
+}
+
+/* Liquid Glass Pill Button - Light Porcelain Translucent */
+.liquid-glass-pill-light {
+  position: relative;
+  border-radius: 9999px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(241, 245, 249, 0.82) 100%);
+  backdrop-filter: blur(20px);
+  border: 1.5px solid rgba(255, 255, 255, 0.95);
+  box-shadow: 
+    0 10px 25px -3px rgba(15, 23, 42, 0.08),
+    0 0 18px 0 rgba(56, 189, 248, 0.18),
+    inset 0 1.5px 1.5px 0 rgba(255, 255, 255, 1),
+    inset 0 -1px 2px 0 rgba(15, 23, 42, 0.05);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+}
+
+.liquid-glass-pill-light::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 8%;
+  right: 8%;
+  height: 45%;
+  border-radius: 9999px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.75) 0%, rgba(255, 255, 255, 0.1) 75%, transparent 100%);
+  pointer-events: none;
+}
+
+.liquid-glass-pill-light:hover {
+  transform: translateY(-2px);
+  background: linear-gradient(180deg, #FFFFFF 0%, rgba(248, 250, 252, 0.95) 100%);
+  box-shadow: 
+    0 14px 32px -3px rgba(15, 23, 42, 0.12),
+    0 0 24px 0 rgba(56, 189, 248, 0.3),
+    inset 0 2px 2px 0 #FFFFFF;
+}
+
+/* Liquid Morphism Input Capsule (Ref: Image 2 'Ask anything...') */
+.liquid-glass-input-capsule {
+  position: relative;
+  border-radius: 9999px;
+  background: linear-gradient(180deg, rgba(24, 24, 27, 0.94) 0%, rgba(9, 9, 11, 0.98) 100%);
+  backdrop-filter: blur(24px);
+  border: 1.5px solid rgba(255, 255, 255, 0.22);
+  box-shadow: 
+    -16px 0 32px -6px rgba(249, 115, 22, 0.32),
+    16px 0 32px -6px rgba(56, 189, 248, 0.38),
+    0 16px 36px -4px rgba(15, 23, 42, 0.4),
+    inset 0 1.5px 1.5px 0 rgba(255, 255, 255, 0.45),
+    inset 0 -1.5px 2px 0 rgba(0, 0, 0, 0.5);
+}
+
+.liquid-glass-input-capsule::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 6%;
+  right: 6%;
+  height: 40%;
+  border-radius: 9999px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0.02) 75%, transparent 100%);
+  pointer-events: none;
+}
+
+/* Liquid Glass Chip - Ref: Image 2 '+', 'Normal', 'DeepThink', 'Voice' */
+.liquid-glass-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #E2E8F0;
+  font-size: 0.75rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.liquid-glass-chip:hover {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.32);
+  color: #FFFFFF;
+  transform: translateY(-1px);
+}
+
+/* Liquid Glass Send Button - Ref: Image 2 Circular Gradient Arrow */
+.liquid-glass-send-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 9999px;
+  background: linear-gradient(135deg, #A855F7 0%, #6366F1 50%, #3B82F6 100%);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 0 16px rgba(168, 85, 247, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.7);
+  color: #FFFFFF;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+}
+
+.liquid-glass-send-btn:hover {
+  transform: scale(1.08);
+  box-shadow: 0 0 24px rgba(168, 85, 247, 0.8), inset 0 1.5px 2px rgba(255, 255, 255, 0.9);
+}
+
+/* Liquid Glass Pill Button - Electric Cyan (Ref: Image 3 'Icon button') */
+.liquid-glass-pill-cyan {
+  position: relative;
+  border-radius: 9999px;
+  background: linear-gradient(180deg, rgba(8, 51, 68, 0.92) 0%, rgba(12, 74, 96, 0.98) 100%);
+  backdrop-filter: blur(20px);
+  border: 1.5px solid rgba(255, 255, 255, 0.35);
+  box-shadow: 
+    0 14px 28px -4px rgba(15, 23, 42, 0.35),
+    0 0 28px -2px rgba(6, 182, 212, 0.45),
+    inset 0 1.5px 1.5px 0 rgba(255, 255, 255, 0.65),
+    inset 0 -1.5px 2px 0 rgba(0, 0, 0, 0.4);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+}
+
+.liquid-glass-pill-cyan::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 10%;
+  right: 10%;
+  height: 48%;
+  border-radius: 9999px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.45) 0%, rgba(255, 255, 255, 0.05) 75%, transparent 100%);
+  pointer-events: none;
+}
+
+.liquid-glass-pill-cyan:hover {
+  transform: translateY(-2px);
+  box-shadow: 
+    0 18px 36px -4px rgba(15, 23, 42, 0.45),
+    0 0 36px 0 rgba(6, 182, 212, 0.65),
+    inset 0 2px 2px 0 rgba(255, 255, 255, 0.85);
+}
+
+/* Liquid Glass Multi-Card Container (Ref: Image 3 'Tabs' / 'Pro plan') */
+.liquid-glass-card {
+  position: relative;
+  border-radius: 1.5rem;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(248, 250, 252, 0.85) 100%);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1.5px solid rgba(255, 255, 255, 0.95);
+  box-shadow: 
+    0 20px 48px -12px rgba(15, 23, 42, 0.08),
+    0 4px 16px -2px rgba(15, 23, 42, 0.03),
+    inset 0 1.5px 1.5px 0 #FFFFFF,
+    inset 0 -1px 2px 0 rgba(15, 23, 42, 0.04);
+}
+
+.btn-liquid-glass-primary {
+  @apply liquid-glass-pill-dark;
+}
+
+.btn-liquid-glass-secondary {
+  @apply liquid-glass-pill-light;
+}
+
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+.preserve-3d {
+  transform-style: preserve-3d;
+}
+
+/* Typography styles - Pixelify Sans font guaranteed */
+.font-pixel {
+  font-family: 'Pixelify Sans', 'Silkscreen', 'Press Start 2P', var(--font-pixelify), monospace;
+}
+
+.font-editorial {
+  font-family: var(--font-instrument-serif), Georgia, serif;
+}
+
+.font-mono-code {
+  font-family: var(--font-jetbrains-mono), monospace;
+}
+
+/* Custom Clean Scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #F8FAFC;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(15, 23, 42, 0.15);
+  border-radius: 9999px;
+  border: 2px solid #F8FAFC;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(15, 23, 42, 0.3);
+}
+
+/* ------------------------------------------------------------- */
+/* ROSE ENGINE NOTCH MASK, DRIFT & PETAL ANIMATIONS              */
+/* ------------------------------------------------------------- */
+
+.rose-ticket-card {
+  mask: radial-gradient(circle 17px at 0 55%, #0000 97%, #000) left/51% 100% no-repeat, radial-gradient(circle 17px at 100% 55%, #0000 97%, #000) right/51% 100% no-repeat;
+  -webkit-mask: radial-gradient(circle 17px at 0 55%, #0000 97%, #000) left/51% 100% no-repeat, radial-gradient(circle 17px at 100% 55%, #0000 97%, #000) right/51% 100% no-repeat;
+}
+
+@keyframes roseDriftA {
+  0% { transform: translateX(0px) translateY(0px); }
+  100% { transform: translateX(26px) translateY(4px); }
+}
+
+@keyframes roseDriftB {
+  0% { transform: translateX(0px) translateY(0px); }
+  100% { transform: translateX(-30px) translateY(6px); }
+}
+
+@keyframes rosePetalFall {
+  0% { transform: translate(0, -20px) rotate(0deg); opacity: 0.9; }
+  100% { transform: translate(var(--dx, 40px), 110vh) rotate(540deg); opacity: 0; }
+}
+
+.rose-drift-a {
+  animation: roseDriftA 14s ease-in-out infinite alternate;
+}
+
+.rose-drift-b {
+  animation: roseDriftB 17s ease-in-out infinite alternate;
+}
+
+.rose-glass {
+  position: absolute;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(10px) saturate(1.2);
+  -webkit-backdrop-filter: blur(10px) saturate(1.2);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}

@@ -1,0 +1,40 @@
+# Dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# Next.js build output
+/.next/
+/out/
+/build
+/dist
+
+# Production cache & typecheck
+*.tsbuildinfo
+next-env.d.ts.bak
+
+# Environment variables - Strictly never commit local secrets
+.env*.local
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Vercel & Turbopack
+.vercel
+.turbo
+
+# IDE & OS
+.DS_Store
+*.pem
+.vscode/
+.idea/
+*.swp
+*.swo
+Thumbs.db
+
+# Logs & temp
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.tempmediaStorage/
