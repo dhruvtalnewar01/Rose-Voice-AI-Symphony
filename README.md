@@ -481,44 +481,39 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ---
 
+---
+
+## 🚀 VERCEL DEPLOYMENT GUIDE (RECOMMENDED)
+
+Next.js was created and is natively optimized for Vercel. Deploying Rose Voice AI Symphony on Vercel delivers zero-latency edge streaming, automatic serverless API scaling, and instant WebRTC/SSE support.
+
+### One-Click Vercel Deployment via GitHub:
+
+1. **Import Repository**:
+   - Go to [Vercel Dashboard](https://vercel.com/new).
+   - Under **Import Git Repository**, select `dhruvtalnewar01/Rose-Voice-AI-Symphony`.
+2. **Framework Preset**:
+   - Vercel automatically selects **Next.js**.
+   - Build Command: `next build` (Default)
+   - Output Directory: `.next` (Default)
+   - Install Command: `npm install` (Default)
+3. **Configure Environment Variables**:
+   - In the **Environment Variables** section, add:
+     - `OPENAI_API_KEY`: Your OpenAI API key (for GPT-4o voice stream reasoning and fast vision analysis)
+     - `BOLNA_API_KEY`: Your Bolna API key
+     - `NEXT_PUBLIC_VOICE_PROVIDER`: `bolna`
+     - `NEXT_PUBLIC_BOLNA_AGENT_ID`: Your Bolna Voice Agent identifier (e.g. `ira-emergency-escalation-agent`)
+4. **Deploy**:
+   - Click **Deploy**. Vercel will build and launch your production deployment in under 60 seconds with full native SSE streaming, camera permissions, and MediaPipe spatial vision.
+
+---
+
 ## 🌐 NETLIFY DEPLOYMENT GUIDE
 
-Rose Voice AI Symphony supports two deployment pathways on Netlify:
-
-### Method 1: Continuous Deployment via GitHub (Production Grade)
-This is the recommended deployment method. Netlify connects directly to the repository and deploys Next.js with full serverless API routes (`/api/voice-stream`, `/api/voice-chat`, `/api/outbound-call`) using `@netlify/plugin-nextjs`.
-
-1. **Connect Repository to Netlify**:
-   - Go to [Netlify Dashboard](https://app.netlify.com).
-   - Click **Add new site** > **Import an existing project** > **GitHub**.
-   - Select `dhruvtalnewar01/Rose-Voice-AI-Symphony`.
-2. **Automatic Build Detection**:
-   - Netlify automatically reads [netlify.toml](file:///c:/Users/Dhruv/Downloads/Bolna%20Voice%20Hack/netlify.toml).
-   - Build Command: `npm run build`
-   - Publish Directory: `.next`
-   - Plugin: `@netlify/plugin-nextjs` (pre-configured)
-3. **Configure Environment Variables in Netlify**:
-   - In Netlify, navigate to **Site configuration** > **Environment variables**.
-   - Add the following keys:
-     - `OPENAI_API_KEY`: Your OpenAI API key (for GPT-4o voice stream reasoning)
-     - `BOLNA_API_KEY`: Your Bolna API key
-     - `NEXT_PUBLIC_BOLNA_AGENT_ID`: Your Bolna Voice Agent identifier
-     - `NEXT_PUBLIC_VOICE_PROVIDER`: `bolna`
-4. **Deploy**:
-   - Click **Deploy site**. Netlify provisions serverless Edge functions with full streaming support.
-
-### Method 2: Temporary Drag and Drop Deployment (`out/` Folder)
-If you need an instant preview without connecting Git credentials:
-
-1. **Generate the `out/` Directory**:
-   ```bash
-   npm run export
-   ```
-   This generates the optimized static bundle in the `out/` folder, populated with pre-rendered pages, Web Audio assets, 3D models, and Netlify `_redirects`.
-2. **Drag and Drop to Netlify**:
-   - Open [app.netlify.com/drop](https://app.netlify.com/drop) in your browser.
-   - Drag the generated `out/` folder directly into the browser window.
-   - The site deploys in seconds.
+For Netlify users, the repository includes full `@netlify/plugin-nextjs` and `netlify.toml` support:
+1. Connect `dhruvtalnewar01/Rose-Voice-AI-Symphony` in Netlify.
+2. Add `OPENAI_API_KEY` and `BOLNA_API_KEY` under **Site configuration** > **Environment variables**.
+3. Deploy site. Netlify builds the App Router API routes as serverless cloud functions.
 
 ---
 
