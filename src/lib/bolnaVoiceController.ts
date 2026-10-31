@@ -34,6 +34,7 @@ export class BolnaVoiceController {
   // Active Utterance Anchor (prevents Chromium V8 garbage-collecting SpeechSynthesisUtterance)
   private activeUtterance: SpeechSynthesisUtterance | null = null;
   private utteranceWatchdogTimer: any = null;
+  private speechKeepAliveTimer: any = null;
 
   // Web Audio Context for audio level, frequency visualizer, and studio volume boost
   private audioContext: AudioContext | null = null;
@@ -186,35 +187,83 @@ export class BolnaVoiceController {
     const voices = window.speechSynthesis.getVoices();
     if (!voices || voices.length === 0) return null;
 
-    // 1. Natural Indian Female Voice Priorities (Edge Natural Online & Chrome Indic)
-    const indianPriorities = [
-      'neerja',                  // Microsoft Neerja Online (Natural) - Studio grade Indian English
-      'swara',                   // Microsoft Swara Online (Natural) - Expressive Hindi
-      'heera',                   // Microsoft Heera - English (India)
-      'google हिन्दी',            // Google Hindi (Chrome)
-      'google मराठी',            // Google Marathi (Chrome)
-      'marathi',                 // Marathi neural voices
-      'mr-in',
-      'google english (india)',  // Google English (India) (Chrome)
-      'veena',                   // Apple Veena (en-IN)
-      'lekha',                   // Apple Lekha (hi-IN)
-      'sangeeta',
-      'kalpana',
-      'hindi',
-      'india',
-    ];
+    // Filter out male voices strictly
+    const isMale = (v: SpeechSynthesisVoice) => {
+      const name = v.name.toLowerCase();
+      return (
+        name.includes('male') ||
+        name.includes('prabhat') ||
+        name.includes('madhur') ||
+        name.includes('david') ||
+        name.includes('mark') ||
+        name.includes('george') ||
+        name.includes('guy') ||
+        name.includes('stefan') ||
+        name.includes('ravi') ||
+        name.includes('hemant') ||
+        name.includes('karan') ||
+        name.includes('rishi') ||
+        name.includes('amit') ||
+        name.includes('ajay') ||
+        name.includes('tarun') ||
+        name.includes('anil')
+      );
+    };
+
+    // 1. Language-Conditioned Authentic Indian Female Voice Priorities
+    let indianPriorities: string[];
+    if (this.language === 'mr') {
+      indianPriorities = [
+        'google मराठी',
+        'google marathi',
+        'marathi',
+        'aarohi',
+        'anjali',
+        'swara',
+        'google हिन्दी',
+        'google hindi',
+        'lekha',
+        'neerja',
+        'veena',
+        'heera',
+        'sangeeta',
+        'kalpana',
+      ];
+    } else if (this.language === 'hi' || this.language === 'hinglish') {
+      indianPriorities = [
+        'swara',                   // Microsoft Swara Online (Natural) - Expressive Hindi
+        'google हिन्दी',            // Google Hindi (Chrome Android / Windows)
+        'google hindi',
+        'lekha',                   // Apple Lekha (hi-IN on iOS & macOS)
+        'neerja',                  // Microsoft Neerja Online (Natural) - Studio grade Indian English/Hinglish
+        'veena',                   // Apple Veena (en-IN on iOS & macOS)
+        'heera',                   // Microsoft Heera - English (India)
+        'sangeeta',
+        'kalpana',
+        'google english (india)',
+        'ananya',
+        'priya',
+      ];
+    } else {
+      // English with authentic Indian female accent
+      indianPriorities = [
+        'neerja',                  // Microsoft Neerja Online (Natural) - Studio grade Indian English
+        'heera',                   // Microsoft Heera - English (India)
+        'veena',                   // Apple Veena (en-IN on iOS & macOS)
+        'google english (india)',  // Google English (India) (Chrome Android / Windows)
+        'ananya',
+        'priya',
+        'swara',
+        'google हिन्दी',
+        'google hindi',
+        'lekha',
+      ];
+    }
 
     for (const name of indianPriorities) {
       const match = voices.find((v) => {
         const vName = v.name.toLowerCase();
-        return (
-          vName.includes(name) &&
-          !vName.includes('male') &&
-          !vName.includes('prabhat') &&
-          !vName.includes('madhur') &&
-          !vName.includes('david') &&
-          !vName.includes('mark')
-        );
+        return vName.includes(name) && !isMale(v);
       });
       if (match) {
         this.cachedBestVoice = match;
@@ -222,18 +271,44 @@ export class BolnaVoiceController {
       }
     }
 
-    // 2. High-Clarity Ultra-Natural Human-like Female Neural Voice Priorities (Impressive, breathy, lifelike)
+    // 2. Language-specific locale matching (female only)
+    const targetLocale = this.language === 'mr' ? 'mr' : this.language === 'en' ? 'en-in' : 'hi';
+    const targetLocaleVoice = voices.find((v) => {
+      const lang = (v.lang || '').toLowerCase().replace('_', '-');
+      return lang.startsWith(targetLocale) && !isMale(v);
+    });
+    if (targetLocaleVoice) {
+      this.cachedBestVoice = targetLocaleVoice;
+      return targetLocaleVoice;
+    }
+
+    // 3. Any voice with explicit Indian locale tags (en-IN, hi-IN, mr-IN) that is female
+    const indianLocaleVoice = voices.find((v) => {
+      const lang = (v.lang || '').toLowerCase().replace('_', '-');
+      return (
+        (lang === 'en-in' || lang === 'hi-in' || lang === 'mr-in' || lang.startsWith('hi') || lang.startsWith('mr')) &&
+        !isMale(v)
+      );
+    });
+    if (indianLocaleVoice) {
+      this.cachedBestVoice = indianLocaleVoice;
+      return indianLocaleVoice;
+    }
+
+    // 4. Any voice with 'india' in name or locale
+    const indianNamedVoice = voices.find((v) => {
+      const name = v.name.toLowerCase();
+      const lang = (v.lang || '').toLowerCase();
+      return (name.includes('india') || lang.includes('in')) && !isMale(v);
+    });
+    if (indianNamedVoice) {
+      this.cachedBestVoice = indianNamedVoice;
+      return indianNamedVoice;
+    }
+
+    // 5. Natural Commonwealth female voice fallback (warm, non-American)
     const globalNaturalFemalePriorities = [
-      'jenny',                   // Microsoft Jenny Online (Natural) - amazingly human & breathy
-      'aria',                    // Microsoft Aria Online (Natural) - crisp broadcast quality
-      'sonia',                   // Microsoft Sonia Online (Natural) - warm British English
-      'ava',                     // Microsoft Ava Online (Natural)
-      'emma',                    // Microsoft Emma Online (Natural)
-      'google uk english female',
-      'google us english',
-      'samantha',                // Apple Samantha
-      'siri',
-      'zira',                    // Microsoft Zira Desktop (standard Windows female voice)
+      'sonia', 'jenny', 'aria', 'ava', 'emma', 'samantha', 'zira'
     ];
 
     for (const name of globalNaturalFemalePriorities) {
@@ -476,6 +551,7 @@ export class BolnaVoiceController {
 
   public setLanguage(lang: VoiceLanguage) {
     this.language = lang;
+    this.cachedBestVoice = null;
     if (this.recognition) {
       this.recognition.lang = lang === 'en' ? 'en-IN' : lang === 'mr' ? 'mr-IN' : 'hi-IN';
     }
@@ -1101,13 +1177,26 @@ export class BolnaVoiceController {
     // 7. Identification / "What is this?"
     if (/ye kya hai|yeh kya hai|kya hai|what is this|identify|identify this/.test(q)) {
       const cat = (this.visualContext.category || 'General').toLowerCase().replace('_', ' ');
-      const summary = this.visualContext.headline_summary || 'identified successfully';
+      const summary = this.visualContext.headline_summary || '';
+      const verdict = this.visualContext.health_verdict?.classification ? `Health rating ${this.visualContext.health_verdict.classification.toLowerCase()} he.` : '';
       const templates = [
-        `Ye ${title} he, jo ${cat} category ka product he.`,
-        `Camera scan me detect hua item ${title} he, ${summary}.`,
-        `${opener} maine identify kar liya, ye ${title} he, scan clear he!`
+        `Ye ${title} he, jo ${cat} category ka product he. ${summary} ${verdict}`,
+        `Camera scan me detect hua item ${title} he. ${summary} ${verdict}`,
+        `${opener} maine identify kar liya, ye ${title} he, ${cat} category me! ${summary}`
       ];
       return this.getRotatingTemplate('identify', templates);
+    }
+
+    // 8. Details, Ingredients & Deeper Explanation ("aur batao", "tell me more", "ingredients", "details")
+    if (/detail|details|aur batao|explain|more|ingredient|ingredients|contents|fayde|use kaise/.test(q)) {
+      const summary = this.visualContext.headline_summary || '';
+      const reason = this.visualContext.health_verdict?.reason || '';
+      const insight = Array.isArray(this.visualContext.actionable_insights) ? this.visualContext.actionable_insights.join('. ') : '';
+      const templates = [
+        `${opener} ${title} ke bare me details ye he: ${summary}. Health assessment ke mutabiq ${reason}. ${insight}`,
+        `${title} ka complete breakdown ye he: ${summary}. Iske key attributes analyze kiye gaye he, ${reason}. ${insight}`
+      ];
+      return this.getRotatingTemplate('details', templates);
     }
 
     return null;
@@ -1262,7 +1351,7 @@ export class BolnaVoiceController {
 
       const finalText = (receivedFullText || this.fullStreamedAssistantText)
         .replace(/\baww+[,!\s\.\-]*/gi, '')
-        .split(/[\r\n]+/)[0]
+        .replace(/[\r\n]+/g, ' ')
         .trim()
         .replace(/[\u2014\u2013—–]/g, '-');
 
@@ -1324,7 +1413,7 @@ export class BolnaVoiceController {
     }
 
     // 1. Select the most impressive, lifelike natural female voice
-    const bestVoice = this.findBestNaturalFemaleVoice();
+    let bestVoice = this.findBestNaturalFemaleVoice();
 
     // 2. Phonetically normalize Hinglish tuned specifically to the selected voice
     const cleanPhoneticText = this.phoneticHinglishNormalize(cleanText, bestVoice);
@@ -1344,6 +1433,10 @@ export class BolnaVoiceController {
       if (this.utteranceWatchdogTimer) {
         clearTimeout(this.utteranceWatchdogTimer);
         this.utteranceWatchdogTimer = null;
+      }
+      if (this.speechKeepAliveTimer) {
+        clearInterval(this.speechKeepAliveTimer);
+        this.speechKeepAliveTimer = null;
       }
 
       this.activeUtterance = null;
@@ -1365,31 +1458,12 @@ export class BolnaVoiceController {
       }, 400);
     };
 
-    const isMobile =
-      typeof navigator !== 'undefined' &&
-      /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-
-    let fallbackTriggered = false;
-    const triggerServerTtsFallback = async () => {
-      if (fallbackTriggered) return;
-      fallbackTriggered = true;
-      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-        try { window.speechSynthesis.cancel(); } catch {}
-      }
-      await this.playServerTts(cleanText, onSpeechEnd);
-    };
-
-    // On mobile phones or when Marathi is selected:
-    // Mobile browsers (iOS Safari & Android Chrome) have severe local SpeechSynthesis bugs (silent stalls, missing Indic models).
-    // Prioritize OpenAI studio-grade neural voice ('nova') for 100% reliable, crystal-clear mobile playback.
-    if (isMobile || this.language === 'mr' || !bestVoice || !this.isIndianVoice(bestVoice)) {
-      const serverTtsSuccess = await this.playServerTts(cleanText, onSpeechEnd);
-      if (serverTtsSuccess) {
-        return;
-      }
+    // Ensure bestVoice is queried fresh if not yet cached
+    if (!bestVoice && typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      bestVoice = this.findBestNaturalFemaleVoice();
     }
 
-    // 3. High-Clarity Speech Synthesis using the best natural female voice with instant server fallback
+    // 3. High-Clarity Authentic Indian Female Speech Synthesis (Primary across all devices)
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       try {
         const utter = new SpeechSynthesisUtterance(cleanPhoneticText);
@@ -1401,41 +1475,53 @@ export class BolnaVoiceController {
           utter.voice = bestVoice;
           utter.lang = bestVoice.lang;
         } else {
-          utter.lang = this.language === 'en' ? 'en-IN' : 'hi-IN';
+          utter.lang = this.language === 'en' ? 'en-IN' : this.language === 'mr' ? 'mr-IN' : 'hi-IN';
         }
 
-        // Natural, lively, human conversational pitch and pace
+        // Natural, warm, expressive Indian female pitch and pace
         utter.volume = 1.0;
-        utter.pitch = 1.08; // Warm, natural female pitch
-        utter.rate = 1.03;  // Natural human conversational flow
+        utter.pitch = 1.05; // Warm, natural human female pitch
+        utter.rate = 1.0;   // Natural human conversational flow
 
         utter.onend = onSpeechEnd;
-        // If device speech engine fails or lacks voice pack, immediately fallback to server neural voice!
         utter.onerror = (err) => {
-          console.warn('[SpeechSynthesis] Device engine error, switching to server TTS:', err);
-          triggerServerTtsFallback();
+          console.warn('[SpeechSynthesis] Utterance event notice:', err);
+          onSpeechEnd();
         };
 
-        // Safety Watchdog: If utter.onstart doesn't fire within 650ms (Android Chrome stalled queue), fallback!
+        // Mobile & Chromium Keep-Alive Engine: Prevents 14-second stall on long spoken explanations
         let hasStarted = false;
         utter.onstart = () => {
           hasStarted = true;
+          if (this.speechKeepAliveTimer) clearInterval(this.speechKeepAliveTimer);
+          this.speechKeepAliveTimer = setInterval(() => {
+            if (!this.isSpeaking) {
+              clearInterval(this.speechKeepAliveTimer);
+              this.speechKeepAliveTimer = null;
+              return;
+            }
+            if (typeof window !== 'undefined' && 'speechSynthesis' in window && window.speechSynthesis.paused) {
+              window.speechSynthesis.resume();
+            }
+          }, 3500);
         };
 
+        // Gentle Mobile Queue Unstick: unpauses stalled audio queue without aborting native voice
         setTimeout(() => {
-          if (!hasStarted && this.isSpeaking && !fallbackTriggered) {
-            console.warn('[SpeechSynthesis] utter.onstart delayed past 650ms, auto-recovering via server TTS.');
-            triggerServerTtsFallback();
+          if (!hasStarted && this.isSpeaking) {
+            if (typeof window !== 'undefined' && 'speechSynthesis' in window && window.speechSynthesis.paused) {
+              window.speechSynthesis.resume();
+            }
           }
-        }, 650);
+        }, 1200);
 
-        // Safety Watchdog: If Chromium drops onend event (browser bug), auto-unstick after calculated speech duration
+        // Safety Watchdog: Scaled to full word count for rich, detailed multi-sentence explanations
         const wordCount = cleanPhoneticText.split(/\s+/).length;
-        const maxExpectedMs = Math.max(3500, (wordCount / 1.8) * 1000 + 1500);
+        const maxExpectedMs = Math.max(7000, (wordCount / 1.5) * 1000 + 4000);
         if (this.utteranceWatchdogTimer) clearTimeout(this.utteranceWatchdogTimer);
         this.utteranceWatchdogTimer = setTimeout(() => {
           if (this.isSpeaking) {
-            console.warn('[Voice AI Watchdog] utter.onend did not fire in expected window. Auto-recovering listening state.');
+            console.warn('[Voice AI Watchdog] Utterance reached maximum expected duration. Resuming listening state.');
             onSpeechEnd();
           }
         }, maxExpectedMs);
@@ -1452,7 +1538,7 @@ export class BolnaVoiceController {
         return;
       } catch (synthErr) {
         console.warn('Speech synthesis initialization issue, falling back:', synthErr);
-        await triggerServerTtsFallback();
+        onSpeechEnd();
         return;
       }
     }
@@ -1549,7 +1635,7 @@ export class BolnaVoiceController {
       const { replyText, englishUserQuery } = await chatRes.json();
       const sanitizedReply = (replyText || '')
         .replace(/\baww+[,!\s\.\-]*/gi, '')
-        .split(/[\r\n]+/)[0]
+        .replace(/[\r\n]+/g, ' ')
         .trim()
         .replace(/[\u2014\u2013—–]/g, '-');
 

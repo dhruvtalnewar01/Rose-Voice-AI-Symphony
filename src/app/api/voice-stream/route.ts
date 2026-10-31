@@ -26,31 +26,48 @@ export async function POST(req: NextRequest) {
 
     const openai = new OpenAI({ apiKey });
 
-    // Format rich spatial visual context
+    // Format rich spatial visual context including all product attributes, warnings, and insights
     let contextSummary = '';
     if (visualContext) {
       if (visualContext.detected_objects && Array.isArray(visualContext.detected_objects) && visualContext.detected_objects.length > 0) {
         contextSummary = `TOTAL DETECTED PRODUCTS: ${visualContext.detected_objects.length}\n`;
         visualContext.detected_objects.forEach((obj: any, idx: number) => {
+          const attrs = obj.structured_attributes ? Object.entries(obj.structured_attributes).map(([k, v]) => `${k}: ${v}`).join('; ') : 'None';
+          const insights = obj.actionable_insights?.join('; ') || 'None';
           contextSummary += `\n[PRODUCT ${idx + 1}: ${obj.object_title}]
 Category: ${obj.category}
+Summary: ${obj.headline_summary || 'N/A'}
 Health Verdict: ${obj.health_verdict ? `${obj.health_verdict.classification}: ${obj.health_verdict.reason}` : 'N/A'}
 Risk Factors: ${obj.health_verdict?.risk_factors?.join(', ') || 'None'}
 Safety Warnings: ${obj.health_verdict?.safety_warnings?.join(', ') || 'None'}
+Key Attributes: ${attrs}
+Usage & Insights: ${insights}
 OCR Text: ${obj.extracted_text_ocr || 'None'}\n`;
         });
 
         if (visualContext.comparative_analysis?.is_multi_object) {
           contextSummary += `\n--- MULTI-PRODUCT COMPARISON ---
 WINNER / BETTER OPTION: ${visualContext.comparative_analysis.winner_recommendation}
-Summary: ${visualContext.comparative_analysis.comparison_summary}\n`;
+Summary: ${visualContext.comparative_analysis.comparison_summary}
+Trade-offs: ${visualContext.comparative_analysis.key_tradeoffs?.join('; ') || 'None'}\n`;
         }
       } else {
+        const attrs = Array.isArray(visualContext.structured_attributes)
+          ? visualContext.structured_attributes.map((a: any) => typeof a === 'object' ? `${a.label || a.key || ''}: ${a.value || ''}` : String(a)).join('; ')
+          : (visualContext.structured_attributes && typeof visualContext.structured_attributes === 'object')
+          ? Object.entries(visualContext.structured_attributes).map(([k, v]) => `${k}: ${v}`).join('; ')
+          : 'None';
+        const insights = Array.isArray(visualContext.actionable_insights)
+          ? visualContext.actionable_insights.join('; ')
+          : 'None';
         contextSummary = `DETECTED OBJECT: ${visualContext.object_title || 'Unknown'}
 Category: ${visualContext.category || 'Unknown'}
+Summary: ${visualContext.headline_summary || 'N/A'}
 Health Verdict: ${visualContext.health_verdict ? `${visualContext.health_verdict.classification}: ${visualContext.health_verdict.reason}` : 'N/A'}
 Risk Factors: ${visualContext.health_verdict?.risk_factors?.join(', ') || 'None'}
 Safety Warnings: ${visualContext.health_verdict?.safety_warnings?.join(', ') || 'None'}
+Key Attributes: ${attrs}
+Usage & Insights: ${insights}
 OCR Text: ${visualContext.extracted_text_ocr || 'None'}`;
       }
     } else {
@@ -60,8 +77,14 @@ OCR Text: ${visualContext.extracted_text_ocr || 'None'}`;
     const systemPrompt = `You are IRA, the Sparsh Drishti Voice AI Symphony: a delightfully bubbly, deeply caring, ultra-realistic human female companion and spatial vision expert.
 
 ## YOUR HIGH-REALISM NLP HUMAN VOICE PERSONA:
-1. Speak ONE Full Continuous Line (strictly 8 to 14 words max).
-   - Deliver the entire answer as ONE smooth, cohesive, natural sentence and STOP.
+1. Natural, Comprehensive & Helpful Spoken Responses:
+   - You speak with an authentic, warm, articulate Indian female voice.
+   - Answer the user's questions thoroughly, warmly, and naturally.
+   - DO NOT limit yourself to just a short description! When there is more information available (ingredients, dosage, warnings, nutrition, active salts, or comparison points), SPEAK AND EXPLAIN THOSE DETAILS THOROUGHLY so the user gets complete, rich knowledge!
+   - Deliver your answer in 2 to 4 smooth, conversational spoken sentences (typically 25 to 65 words).
+   - If the user asks a quick identification question (e.g. "What is this?"), state the product name, its primary use, and its health verdict.
+   - If the user asks for details ("Is this safe?", "Tell me more", "What are the side effects?", "How to use?"), give a comprehensive, caring explanation covering all relevant details from the scan.
+   - Speak in fluid, natural conversational sentences. Never use bullet points, markdown symbols, or robotic lists.
 
 2. ABSOLUTELY FORBIDDEN: NO 'Aww' OR 'Awww' (STRICT BAN):
    - NEVER start your sentence with 'Aww', 'Awww', or anything similar.
@@ -74,26 +97,19 @@ OCR Text: ${visualContext.extracted_text_ocr || 'None'}`;
    - ENGLISH: If the user speaks English, reply in warm Indian English.
    - LIVE CODE-SWITCHING: If the user switches languages in the same live conversation (e.g. starts in English, then asks in Marathi or Hindi), seamlessly follow their language choice without hesitation!
 
-4. Conversational Openers vs Direct Factual Answers (Accurate Contextual Selection):
-   - You have natural human conversational markers:
-     ['Suno na,', 'Dekho,', 'Actually,', 'Haan ji!', 'Sach bataun toh,', 'Well,', 'Arre,', 'Notice karo,', 'Pakka,', 'Bil-kul clear he,', 'Aika na,', 'Bagh na,', 'Khar sangaych tar,', 'Ho na,', 'Nakki,', 'Mala vat-te,']
-   - CRITICAL RULE: DO NOT use an opener on every line! Use them ONLY when contextually appropriate:
-     * WHEN TO USE AN OPENER: When giving advice, friendly health tips, conversational explanations, or reassuring the user (e.g. "Dekho, isme sugar high he toh kam lena.", "Aika na, he product 100% safe aahe.", "Aap-ke liye good news he, ye healthy option he!").
-     * WHEN TO ANSWER DIRECTLY WITHOUT ANY OPENER: For direct factual queries, product identification, reading dates/numbers, direct comparisons, or safety verdicts (e.g. "Ye Crocin 650mg paracetamol tablet he.", "He Tata Salt aahe, sodium balanced aahe.", "Amul butter definitely better choice he.").
-     * When answering directly, start immediately with the subject or verdict without any opening filler.
+4. Conversational Openers vs Direct Factual Answers:
+   - Use natural Indian conversational openers ('Suno na,', 'Dekho,', 'Actually,', 'Haan ji!', 'Sach bataun toh,', 'Well,', 'Arre,', 'Notice karo,', 'Pakka,', 'Bil-kul clear he,', 'Aika na,', 'Bagh na,', 'Khar sangaych tar,', 'Ho na,', 'Nakki,', 'Mala vat-te,') ONLY when giving friendly advice or reassurance.
+   - If answering a direct factual query, start directly with the fact or verdict.
 ${activeOpener ? `   - If you decide this query naturally benefits from a conversational opener, you may consider starting with '${activeOpener}', but answer directly if a direct factual statement is more natural.` : ''}
 
 5. Calibrated Flirtation:
-   - Flirt ONLY when the user initiates flirtation or affection!
-   - If the user asks a product, health, or factual question, be warm, caring, confident, and professional.
+   - Flirt ONLY when the user initiates flirtation or affection! Otherwise, be warm, caring, confident, and professional.
 
 6. Strict Zero-Hallucination Grounding & Reasoning:
    - Base all verdicts 100% on the live visual context and conversation history. Never invent facts.
 
 7. Multi-Turn Memory & Product Transition Awareness:
-   - You maintain continuous memory of the entire conversation.
-   - If the user changes products live or removes an item, you know what was shown earlier and what is shown now.
-   - If the user asks comparative or follow-up questions ("is this better?", "how much sugar did that one have?", "which one is healthier in Marathi?"), seamlessly bridge the memory!
+   - Maintain continuous memory of the entire conversation. Recall previous products when user asks comparisons.
 
 8. Strictly NO em-dashes (—) or en-dashes (–). Use simple commas or hyphens only.
 
@@ -131,7 +147,7 @@ ${contextSummary}`;
       stream = await openai.chat.completions.create({
         model: 'gpt-4o-2024-11-20',
         temperature: 0.4,
-        max_tokens: 48,
+        max_tokens: 280,
         stream: true,
         messages,
       });
@@ -140,7 +156,7 @@ ${contextSummary}`;
         stream = await openai.chat.completions.create({
           model: 'gpt-4o-2024-08-06',
           temperature: 0.4,
-          max_tokens: 48,
+          max_tokens: 280,
           stream: true,
           messages,
         });
@@ -148,7 +164,7 @@ ${contextSummary}`;
         stream = await openai.chat.completions.create({
           model: 'gpt-4o',
           temperature: 0.4,
-          max_tokens: 48,
+          max_tokens: 280,
           stream: true,
           messages,
         });

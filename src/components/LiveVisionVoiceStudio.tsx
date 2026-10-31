@@ -214,9 +214,9 @@ export default function LiveVisionVoiceStudio() {
         }
       },
       onAssistantTranscript: (t) => {
-        const singleLine = (t || '').split(/[\r\n]+/)[0].trim().replace(/[\u2014\u2013—–]/g, '-');
-        if (singleLine) {
-          setAssistantTranscript(singleLine);
+        const cleanText = (t || '').replace(/[\r\n]+/g, ' ').trim().replace(/[\u2014\u2013—–]/g, '-');
+        if (cleanText) {
+          setAssistantTranscript(cleanText);
         }
       },
     });
@@ -1132,19 +1132,19 @@ export default function LiveVisionVoiceStudio() {
                     className="w-full p-2.5 sm:p-3 rounded-2xl bg-slate-950/90 backdrop-blur-2xl border border-white/25 shadow-2xl flex flex-col gap-1.5 font-sans text-xs text-white"
                   >
                     {userTranscript && (
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-[9px] font-bold text-cyan-300 bg-cyan-950/90 px-2 py-0.5 rounded-full border border-cyan-700/80 shrink-0">
+                      <div className="flex items-start gap-2">
+                        <span className="font-mono text-[9px] font-bold text-cyan-300 bg-cyan-950/90 px-2 py-0.5 rounded-full border border-cyan-700/80 shrink-0 mt-0.5">
                           YOU
                         </span>
-                        <span className="text-slate-200 font-medium truncate">{userTranscript}</span>
+                        <span className="text-slate-200 font-medium leading-relaxed break-words">{userTranscript}</span>
                       </div>
                     )}
                     {assistantTranscript && (
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-[9px] font-bold text-emerald-300 bg-emerald-950/90 px-2 py-0.5 rounded-full border border-emerald-700/80 shrink-0">
+                      <div className="flex items-start gap-2">
+                        <span className="font-mono text-[9px] font-bold text-emerald-300 bg-emerald-950/90 px-2 py-0.5 rounded-full border border-emerald-700/80 shrink-0 mt-0.5">
                           IRA
                         </span>
-                        <span className="text-white font-bold truncate">{assistantTranscript}</span>
+                        <span className="text-white font-semibold leading-relaxed break-words">{assistantTranscript}</span>
                       </div>
                     )}
                   </motion.div>
@@ -1370,21 +1370,21 @@ export default function LiveVisionVoiceStudio() {
                 className="w-full p-3 rounded-2xl bg-white/95 backdrop-blur-md border border-slate-200/90 shadow-xs flex flex-col gap-2 font-sans"
               >
                 {userTranscript && (
-                  <div className="flex items-center gap-2 text-xs">
-                    <span className="font-mono text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200 shrink-0">
+                  <div className="flex items-start gap-2 text-xs">
+                    <span className="font-mono text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200 shrink-0 mt-0.5">
                       YOU
                     </span>
-                    <span className="text-slate-800 font-medium truncate">
+                    <span className="text-slate-800 font-medium leading-relaxed break-words">
                       {userTranscript}
                     </span>
                   </div>
                 )}
                 {assistantTranscript && (
-                  <div className="flex items-center gap-2 text-xs">
-                    <span className="font-mono text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 shrink-0">
+                  <div className="flex items-start gap-2 text-xs">
+                    <span className="font-mono text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 shrink-0 mt-0.5">
                       IRA
                     </span>
-                    <span className="text-slate-950 font-bold truncate">
+                    <span className="text-slate-900 font-semibold leading-relaxed break-words">
                       {assistantTranscript}
                     </span>
                   </div>

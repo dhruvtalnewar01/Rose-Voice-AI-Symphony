@@ -27,28 +27,42 @@ export async function POST(req: NextRequest) {
       if (visualContext.detected_objects && Array.isArray(visualContext.detected_objects) && visualContext.detected_objects.length > 0) {
         contextSummary = `TOTAL DETECTED PRODUCTS: ${visualContext.detected_objects.length}\n`;
         visualContext.detected_objects.forEach((obj: any, idx: number) => {
+          const attrs = obj.structured_attributes ? Object.entries(obj.structured_attributes).map(([k, v]) => `${k}: ${v}`).join('; ') : 'None';
+          const insights = obj.actionable_insights?.join('; ') || 'None';
           contextSummary += `\n[PRODUCT ${idx + 1}: ${obj.object_title}]
 Category: ${obj.category}
+Summary: ${obj.headline_summary || 'N/A'}
 Health Verdict: ${obj.health_verdict ? `${obj.health_verdict.classification}: ${obj.health_verdict.reason}` : 'N/A'}
 Risk Factors: ${obj.health_verdict?.risk_factors?.join(', ') || 'None'}
 Safety Warnings: ${obj.health_verdict?.safety_warnings?.join(', ') || 'None'}
+Key Attributes: ${attrs}
+Usage & Insights: ${insights}
 OCR Text: ${obj.extracted_text_ocr || 'None'}\n`;
         });
 
         if (visualContext.comparative_analysis?.is_multi_object) {
           contextSummary += `\n--- MULTI-PRODUCT COMPARISON ---
 WINNER / BETTER OPTION: ${visualContext.comparative_analysis.winner_recommendation}
-Summary: ${visualContext.comparative_analysis.comparison_summary}\n`;
+Summary: ${visualContext.comparative_analysis.comparison_summary}
+Trade-offs: ${visualContext.comparative_analysis.key_tradeoffs?.join('; ') || 'None'}\n`;
         }
       } else {
-        const attrs = visualContext.structured_attributes?.map((a: any) => `${a.label}: ${a.value}`).join(' | ') || '';
+        const attrs = Array.isArray(visualContext.structured_attributes)
+          ? visualContext.structured_attributes.map((a: any) => typeof a === 'object' ? `${a.label || a.key || ''}: ${a.value || ''}` : String(a)).join('; ')
+          : (visualContext.structured_attributes && typeof visualContext.structured_attributes === 'object')
+          ? Object.entries(visualContext.structured_attributes).map(([k, v]) => `${k}: ${v}`).join('; ')
+          : 'None';
+        const insights = Array.isArray(visualContext.actionable_insights)
+          ? visualContext.actionable_insights.join('; ')
+          : 'None';
         contextSummary = `DETECTED OBJECT: ${visualContext.object_title || 'Unknown'}
 Category: ${visualContext.category || 'Unknown'}
-Headline: ${visualContext.headline_summary || ''}
-Key Attributes: ${attrs || 'None'}
+Summary: ${visualContext.headline_summary || 'N/A'}
 Health Verdict: ${visualContext.health_verdict ? `${visualContext.health_verdict.classification}: ${visualContext.health_verdict.reason}` : 'N/A'}
 Risk Factors: ${visualContext.health_verdict?.risk_factors?.join(', ') || 'None'}
 Safety Warnings: ${visualContext.health_verdict?.safety_warnings?.join(', ') || 'None'}
+Key Attributes: ${attrs}
+Usage & Insights: ${insights}
 OCR Text: ${visualContext.extracted_text_ocr || 'None'}`;
       }
     } else {
@@ -98,7 +112,7 @@ ${contextSummary}
 ## MANDATORY JSON OUTPUT FORMAT:
 You MUST output a valid JSON object with EXACTLY these two keys:
 1. "englishUserQuery": The user's query rendered in 100% clean, natural English. CRITICAL: If the user spoke or wrote in Hindi, Hinglish, or any regional language, translate it accurately to English. The user transcript in UI MUST ALWAYS be in English.
-2. "replyText": Your strictly ONE SINGLE PUNCHY LINE response (strictly 8 to 12 words max) in natural, bubbly, caring Hinglish or Indian English. Deliver one punchy sentence and STOP. Strictly NO em-dashes (—) or en-dashes (–). NEVER start with Aww.`;
+2. "replyText": Your articulate, comprehensive spoken response in natural Hinglish, Marathi, or Indian English (2 to 4 smooth sentences, 25 to 65 words). Thoroughly answer the question, explain key ingredients, warnings, and usage tips. Strictly NO em-dashes (—) or en-dashes (–). NEVER start with Aww.`;
 
     // Format rolling conversation history messages
     const historyMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [];
@@ -130,7 +144,7 @@ You MUST output a valid JSON object with EXACTLY these two keys:
       response = await openai.chat.completions.create({
         model: 'gpt-4o-2024-11-20',
         temperature: 0.4,
-        max_tokens: 120,
+        max_tokens: 280,
         response_format: { type: 'json_object' },
         messages,
       });
@@ -139,7 +153,7 @@ You MUST output a valid JSON object with EXACTLY these two keys:
         response = await openai.chat.completions.create({
           model: 'gpt-4o-2024-08-06',
           temperature: 0.4,
-          max_tokens: 120,
+          max_tokens: 280,
           response_format: { type: 'json_object' },
           messages,
         });
@@ -147,7 +161,7 @@ You MUST output a valid JSON object with EXACTLY these two keys:
         response = await openai.chat.completions.create({
           model: 'gpt-4o',
           temperature: 0.4,
-          max_tokens: 120,
+          max_tokens: 280,
           response_format: { type: 'json_object' },
           messages,
         });
