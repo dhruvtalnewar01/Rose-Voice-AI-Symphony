@@ -1,18 +1,17 @@
 <p align="center">
   <a href="https://github.com/dhruvtalnewar01/Rose-Voice-AI-Symphony">
-    <img src="./Logo.jpg" alt="Rose Voice AI Symphony Logo" width="145" style="border-radius: 50%; box-shadow: 0 0 50px rgba(244, 63, 94, 0.75); border: 2.5px solid rgba(244, 63, 94, 0.5);" />
+    <img src="./Logo.jpg" alt="Rose Voice AI Symphony Logo" width="140" style="border-radius: 50%; box-shadow: 0 0 45px rgba(244, 63, 94, 0.6); border: 2px solid rgba(244, 63, 94, 0.4);" />
   </a>
 </p>
 
 <h1 align="center">
-  <font face="Courier New, monospace" size="2" color="#fb7185"><b>❖ AUTONOMOUS COGNITIVE MULTI-MODAL INTELLIGENCE ❖</b></font><br/>
-  <b><font size="7" face="Georgia, serif">𝑹𝑶𝑺𝑬 𝑽𝑶𝑰𝑪𝑬 𝑨𝑰 𝑺𝒀𝑴𝑷𝑯𝑶𝑵𝒀</font></b><br/>
-  <font size="3" color="#f43f5e"><b>⚡ ᴘ ʜ ʏ ꜱ ɪ ᴄ ᴀ ʟ   ʀ ᴇ ᴀ ʟ ɪ ᴛ ʏ   ᴛ ᴏ   ᴄ ʟ ɪ ɴ ɪ ᴄ ᴀ ʟ   ꜱ ʏ ᴍ ᴘ ʜ ᴏ ɴ ʏ ⚡</b></font>
+  <font face="Georgia, 'Times New Roman', Garamond, serif" size="7"><b>Rose Voice AI Symphony</b></font>
 </h1>
 
 <p align="center">
-  <strong>Autonomous Multi-Modal Spatial Vision & Real-Time Conversational Voice Intelligence Platform</strong><br/>
-  <i>Engineered with Bolna Voice AI, OpenAI GPT-4o Flagship, MediaPipe Spatial Vision Wasm, and Clinical Knowledge Graphs</i>
+  <font face="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" size="4">
+    <i>Designed for billions of people who struggle to decipher complex medicine strips, lab reports, packet foods, government forms, etc. Just showcase live to trigger instant multilingual voice guidance.</i>
+  </font>
 </p>
 
 <p align="center">
@@ -49,7 +48,7 @@
 Experience **Rose Voice AI Symphony** in action. The live demonstration below showcases real-time MediaPipe spatial hand tracking, dynamic bounding box extraction, clinical knowledge graph triangulation (NIH RxNorm + OpenFDA), zero-latency bilingual voice interaction (English/Hinglish), and automated emergency physician telephone dispatch powered by Bolna AI:
 
 <div align="center">
-  <video controls width="100%" style="border-radius: 14px; border: 1.5px solid rgba(244, 63, 94, 0.4); box-shadow: 0 25px 60px rgba(0, 0, 0, 0.9);">
+  <video src="https://github.com/dhruvtalnewar01/Rose-Voice-AI-Symphony/raw/main/Rose%20Voice%20AI.mp4" controls="controls" width="100%" style="border-radius: 14px; border: 1.5px solid rgba(244, 63, 94, 0.4); box-shadow: 0 25px 60px rgba(0, 0, 0, 0.9);">
     <source src="https://github.com/dhruvtalnewar01/Rose-Voice-AI-Symphony/raw/main/Rose%20Voice%20AI.mp4" type="video/mp4" />
     <source src="./Rose%20Voice%20AI.mp4" type="video/mp4" />
     Your browser does not support the video tag.
@@ -57,7 +56,7 @@ Experience **Rose Voice AI Symphony** in action. The live demonstration below sh
 </div>
 
 <p align="center">
-  <a href="./Rose%20Voice%20AI.mp4">
+  <a href="https://github.com/dhruvtalnewar01/Rose-Voice-AI-Symphony/blob/main/Rose%20Voice%20AI.mp4">
     <img src="https://img.shields.io/badge/▶_DIRECT_PLAY_FULL_HD_VIDEO-Rose_Voice_AI.mp4-E11D48?style=for-the-badge&logo=youtube&logoColor=white" alt="Play Video" />
   </a>
   <a href="https://github.com/dhruvtalnewar01/Rose-Voice-AI-Symphony/raw/main/Rose%20Voice%20AI.mp4">
@@ -66,6 +65,7 @@ Experience **Rose Voice AI Symphony** in action. The live demonstration below sh
 </p>
 
 <p align="center">
+  <b>🎥 Direct File Link: <a href="https://github.com/dhruvtalnewar01/Rose-Voice-AI-Symphony/blob/main/Rose%20Voice%20AI.mp4">Watch Rose Voice AI.mp4 on GitHub</a></b><br/>
   <i>Full-Duplex Voice Streaming • MediaPipe Wasm 3D Tracking • OpenFDA Knowledge Verification • Bolna AI Telephony Bridge</i>
 </p>
 
