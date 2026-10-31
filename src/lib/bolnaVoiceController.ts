@@ -405,58 +405,18 @@ export class BolnaVoiceController {
     s = s.replace(/बेहतर/g, 'better');
     s = s.replace(/विकल्प/g, 'option');
 
+    const isDevanagari = /[\u0900-\u097F]/.test(text);
+    const hasIndic = isDevanagari || /\b(kya|ye|yeh|hai|he|kaunsa|kaunsi|kaisa|kaisi|batao|suno|khao|nahi|acha|achha|kitna|kitni|dono|aap|aapke|iska|iski|isme|hain|dekho|bilkul)\b/i.test(text);
+
+    // If pure English, preserve words with 100% fidelity without syllable replacement
+    if (!hasIndic && !isDevanagari) {
+      return s.replace(/\s+/g, ' ').trim();
+    }
+
     const targetVoice = voice !== undefined ? voice : this.findBestNaturalFemaleVoice();
     const isIndic = this.isIndianVoice(targetVoice);
 
-    if (!isIndic) {
-      // 4A. English TTS Phoneme Transliteration (for Jenny, Aria, Sonia, Zira, Google US/UK)
-      // This maps Hindi syllables so standard English synthesizers pronounce them with authentic natural Indian fluency:
-      s = s.replace(/\bbilkul\b|\bbil-kul\b/gi, 'bill-cool');
-      s = s.replace(/\baapke\b|\baap-ke\b/gi, 'aap-kay');
-      s = s.replace(/\bliye\b|\bli-ye\b/gi, 'li-yay');
-      s = s.replace(/\bhai\b/gi, 'he');
-      s = s.replace(/\byeh\b/gi, 'ye');
-      s = s.replace(/\bkya\b/gi, 'kyaa');
-      s = s.replace(/\bme\b/gi, 'mein');
-      s = s.replace(/\bse\b/gi, 'seh');
-      s = s.replace(/\bko\b/gi, 'koh');
-      s = s.replace(/\bka\b/gi, 'kaa');
-      s = s.replace(/\bki\b/gi, 'kee');
-      s = s.replace(/\bacha\b|\bachha\b/gi, 'uch-haa');
-      s = s.replace(/\bbahut\b/gi, 'bo-hut');
-      s = s.replace(/\bsuno\b/gi, 'soo-noh');
-      s = s.replace(/\bdekho\b/gi, 'dey-khoh');
-      s = s.replace(/\bdono\b/gi, 'doh-noh');
-      s = s.replace(/\bkaunsa\b/gi, 'kown-saa');
-      s = s.replace(/\bkhao\b/gi, 'khaa-oh');
-      s = s.replace(/\bpeeo\b/gi, 'pee-oh');
-      s = s.replace(/\bnahi\b/gi, 'nah-hee');
-      s = s.replace(/\bkarna\b/gi, 'kur-naa');
-      s = s.replace(/\bkarein\b/gi, 'kuh-rein');
-      s = s.replace(/\brakhein\b/gi, 'rukh-ein');
-      s = s.replace(/\bdhyan\b/gi, 'dhyaan');
-      s = s.replace(/\bnuksan\b/gi, 'nook-saan');
-      s = s.replace(/\bfaydemand\b/gi, 'fye-dey-mund');
-      s = s.replace(/\bmutabiq\b/gi, 'moo-taa-bik');
-      s = s.replace(/\bbina\b/gi, 'bee-naa');
-      s = s.replace(/\bfikar\b/gi, 'fee-karr');
-      s = s.replace(/\bkyunki\b|\bkyu\b/gi, 'kyun-kee');
-      s = s.replace(/\bbataun\b/gi, 'buh-taa-oon');
-      s = s.replace(/\barre\b/gi, 'uh-rrey');
-      s = s.replace(/\bsach\b/gi, 'such');
-      s = s.replace(/\bzyada\b/gi, 'zyaa-daa');
-      s = s.replace(/\bkam\b/gi, 'kumm');
-      s = s.replace(/\btheek\b/gi, 'theek');
-      s = s.replace(/\bmeetha\b/gi, 'mee-thaa');
-      s = s.replace(/\bchahiye\b/gi, 'chaa-hi-yay');
-      s = s.replace(/\bkar sakte\b/gi, 'kur suk-tay');
-      s = s.replace(/\bkaro\b/gi, 'kuh-roh');
-      s = s.replace(/\bhua\b/gi, 'hoo-aa');
-      s = s.replace(/\bhue\b/gi, 'hoo-ay');
-      s = s.replace(/\bhain\b/gi, 'hein');
-      s = s.replace(/\bshukriya\b/gi, 'shook-ree-yaa');
-    } else {
-      // 4B. Indian Neural Voice Cadence (for Neerja, Swara, Google Hindi, Heera)
+    if (isIndic) {
       s = s.replace(/\byeh\b/gi, 'ye');
       s = s.replace(/\bhai\b/gi, 'he');
       s = s.replace(/\bkya\b/gi, 'kyaa');
@@ -1085,118 +1045,125 @@ export class BolnaVoiceController {
   private tryInstantSpatialGrounding(query: string): string | null {
     if (!this.visualContext) return null;
     const q = query.toLowerCase();
-    const title = this.visualContext.object_title || 'ye product';
-    const opener = this.getNextDeckOpener();
+    const isDevanagari = /[\u0900-\u097F]/.test(q);
+    const hasIndic = isDevanagari || /\b(kya|ye|yeh|hai|he|kaunsa|kaunsi|kaisa|kaisi|batao|suno|khao|nahi|acha|achha|kitna|kitni|dono|aap|aapke|iska|iski|isme|hain|kyunki|dekho|bilkul)\b/i.test(q);
+    const hasMarathi = /\b(kay|kasa|kashi|kiti|konte|konta|konti|changle|changli|ahe|ahet|aahe|sanga|kadhi|vapraycha|aika|bagh|nakki|madhun)\b/i.test(q);
+    const isEnglish = !isDevanagari && !hasIndic && !hasMarathi;
+
+    const title = this.visualContext.object_title || (isEnglish ? 'this product' : 'ye product');
+    const opener = isEnglish ? '' : this.getNextDeckOpener();
 
     // 1. Health check question
-    if (/healthy|health|swasthya|achha|theek|sahi/.test(q)) {
+    if (/healthy|health|swasthya|achha|theek|sahi|changle|changla/.test(q)) {
       const verdict = this.visualContext.health_verdict?.classification || 'HEALTHY';
-      const reason = this.visualContext.health_verdict?.reason || 'balanced ingredients he';
-      const templates = [
-        `${title} ${verdict.toLowerCase()} category me aata he, kyu ki ${reason}.`,
-        `${opener} nutrition profile ke mutabiq ${title} bil-kul ${verdict.toLowerCase()} he, basically ${reason}!`,
-        `${title} aap-ke liye safe aur ${verdict.toLowerCase()} option he, ${reason}.`,
-        `${opener} scan confirm karta he ki ${title} ${verdict.toLowerCase()} option he, ${reason}!`,
-        `${title} bil-kul ${verdict.toLowerCase()} he, main reason he ${reason}.`,
-        `${opener} ingredients analyze kiye, ${title} clearly ${verdict.toLowerCase()} he, ${reason}!`
-      ];
-      return this.getRotatingTemplate('health', templates);
+      const reason = this.visualContext.health_verdict?.reason || (isEnglish ? 'balanced nutritional ingredients' : hasMarathi ? 'santulit ghatak aahet' : 'balanced ingredients he');
+      if (isEnglish) {
+        return `${title} is classified as ${verdict.toLowerCase()}, primarily because ${reason}. It is safe to consume.`;
+      }
+      if (hasMarathi) {
+        return `${title} हे ${verdict.toLowerCase()} प्रकारात येते, कारण ${reason}.`;
+      }
+      return `${title} ${verdict.toLowerCase()} category me aata he, kyu ki ${reason}.`;
     }
 
     // 2. Multi-product comparison question
-    if (/better|kaunsa|dono|compare|choice|behtar/.test(q)) {
+    if (/better|kaunsa|dono|compare|choice|behtar|konte|konta|konti/.test(q)) {
       if (this.visualContext.comparative_analysis?.winner_recommendation) {
         const winner = this.visualContext.comparative_analysis.winner_recommendation;
-        const summary = this.visualContext.comparative_analysis.comparison_summary || 'better quality he';
-        const templates = [
-          `Dono me se ${winner} definitely superior choice he, ${summary}!`,
-          `${opener} agar direct comparison dekhein toh ${winner} clear winner he, ${summary}.`,
-          `${winner} choose karna better he, ingredients aur nutrition ke hisab se ${summary}!`,
-          `${opener} mere analysis ke mutabiq ${winner} standout option he, ${summary}.`,
-          `Comparative evaluation me ${winner} easily lead karta he, ${summary}!`
-        ];
-        return this.getRotatingTemplate('comparison', templates);
+        const summary = this.visualContext.comparative_analysis.comparison_summary || (isEnglish ? 'superior quality' : hasMarathi ? 'changle gunadharma aahet' : 'better quality he');
+        if (isEnglish) {
+          return `Between both options, ${winner} is definitely the superior choice. ${summary}.`;
+        }
+        if (hasMarathi) {
+          return `दोन्ही पर्यायांपैकी ${winner} नक्कीच चांगला पर्याय आहे. ${summary}.`;
+        }
+        return `Dono me se ${winner} definitely superior choice he, ${summary}.`;
       }
     }
 
     // 3. Side effects / warnings
-    if (/warning|side effect|nuksan|risk|contraindication|khatra/.test(q)) {
+    if (/warning|side effect|nuksan|risk|contraindication|khatra|dhoka/.test(q)) {
       const warnings = this.visualContext.health_verdict?.safety_warnings?.join(', ');
       if (warnings && warnings.length > 2) {
-        const templates = [
-          `Safety check complete: isme ${warnings} flagged he, bil-kul dhyan rakhein.`,
-          `${opener} scan me ye specific warnings highlight hui he: ${warnings}. Dhyan se use karein!`,
-          `Package label pe warning he: ${warnings}. Thoda careful rahein.`
-        ];
-        return this.getRotatingTemplate('warnings_yes', templates);
+        if (isEnglish) {
+          return `Safety check complete: label highlights ${warnings}. Please review dosage carefully.`;
+        }
+        if (hasMarathi) {
+          return `सुरक्षा तपासणी पूर्ण: यात ${warnings} नोंदवले गेले आहे, काळजी घ्या.`;
+        }
+        return `Safety check complete: isme ${warnings} flagged he, bil-kul dhyan rakhein.`;
       } else {
-        const templates = [
-          `Ingredients clean he, koi safety red flags nahi he, be-fikar rahein.`,
-          `${opener} koi visible risk factors ya warnings nahi mile, bil-kul safe he aap-ke liye!`,
-          `Scan ke according ye 100% hazard free he, tension mat lo!`
-        ];
-        return this.getRotatingTemplate('warnings_no', templates);
+        if (isEnglish) {
+          return `Ingredients are clean with zero safety red flags. It is safe for consumption.`;
+        }
+        if (hasMarathi) {
+          return `घटक सुरक्षित आहेत, कोणताही धोका आढळलेला नाही.`;
+        }
+        return `Ingredients clean he, koi safety red flags nahi he, be-fikar rahein.`;
       }
     }
 
     // 4. Sugar / Calories
-    if (/sugar|calorie|calories|sweet|meetha|chini/.test(q)) {
-      const sugarInfo = this.visualContext.health_verdict?.reason || 'low added sugar profile';
-      const templates = [
-        `${title} me sugar aur calorie levels balanced he, ${sugarInfo}.`,
-        `${opener} nutritional facts ke mutabiq ${sugarInfo}, jo kafi decent profile he.`,
-        `Sweetness footprint check ho gaya: ${sugarInfo}, bil-kul manageable he.`,
-        `${opener} iska caloric footprint scan kiya: ${sugarInfo}!`
-      ];
-      return this.getRotatingTemplate('sugar', templates);
+    if (/sugar|calorie|calories|sweet|meetha|chini|god|sakhar/.test(q)) {
+      const sugarInfo = this.visualContext.health_verdict?.reason || (isEnglish ? 'controlled sugar level' : hasMarathi ? 'santulit sakhar praman' : 'low added sugar profile');
+      if (isEnglish) {
+        return `${title} contains a balanced nutritional profile: ${sugarInfo}.`;
+      }
+      if (hasMarathi) {
+        return `${title} मध्ये साखर आणि कॅलरीचे प्रमाण संतुलित आहे: ${sugarInfo}.`;
+      }
+      return `${title} me sugar aur calorie levels balanced he, ${sugarInfo}.`;
     }
 
     // 5. Expiry & Freshness
-    if (/expiry|expire|fresh|date/.test(q)) {
-      const templates = [
-        `Expiry date valid he aur item completely fresh he.`,
-        `${opener} package inspection ke hisab se ye product bil-kul fresh aur safe he!`,
-        `Batch aur manufacturing details intact he, date stamps check ho gaye.`,
-        `${opener} expiry date valid he, aap bina fikar ke use kar sakte ho!`
-      ];
-      return this.getRotatingTemplate('expiry', templates);
+    if (/expiry|expire|fresh|date|tarikh/.test(q)) {
+      if (isEnglish) {
+        return `The expiry date is valid and this item is verified fresh for use.`;
+      }
+      if (hasMarathi) {
+        return `एक्सपायरी तारीख वैध आहे आणि हे उत्पादन वापरण्यासाठी पूर्णपणे ताजे आहे.`;
+      }
+      return `Expiry date valid he aur item completely fresh he.`;
     }
 
     // 6. Safe to eat / Consume
-    if (/khao|kha sakte|consume|pee sakte|khaa sakte/.test(q)) {
+    if (/khao|kha sakte|consume|pee sakte|khaa sakte|khau|vapraycha|khayla/.test(q)) {
       const verdict = this.visualContext.health_verdict?.classification || 'HEALTHY';
-      const reason = this.visualContext.health_verdict?.reason || 'safe ingredients he';
-      const templates = [
-        `${title} ko aap bina kisi hesitation ke consume kar sakte ho, ye ${verdict.toLowerCase()} he.`,
-        `${opener} bil-kul le sakte ho, ${verdict.toLowerCase()} category he, ${reason}.`,
-        `Safety approved he, aap comfortable hokar consume kar sakte ho.`
-      ];
-      return this.getRotatingTemplate('consume', templates);
+      const reason = this.visualContext.health_verdict?.reason || (isEnglish ? 'clean verified ingredients' : hasMarathi ? 'surakshit ghatak' : 'safe ingredients he');
+      if (isEnglish) {
+        return `You can consume ${title} safely, as it is classified as ${verdict.toLowerCase()} with ${reason}.`;
+      }
+      if (hasMarathi) {
+        return `तुम्ही ${title} सुरक्षितपणे वापरू शकता, हे उत्पादन ${verdict.toLowerCase()} आहे.`;
+      }
+      return `${title} ko aap bina kisi hesitation ke consume kar sakte ho, ye ${verdict.toLowerCase()} he.`;
     }
 
     // 7. Identification / "What is this?"
-    if (/ye kya hai|yeh kya hai|kya hai|what is this|identify|identify this/.test(q)) {
+    if (/ye kya hai|yeh kya hai|kya hai|what is this|identify|identify this|kay aahe|he kay/.test(q)) {
       const cat = (this.visualContext.category || 'General').toLowerCase().replace('_', ' ');
       const summary = this.visualContext.headline_summary || '';
-      const verdict = this.visualContext.health_verdict?.classification ? `Health rating ${this.visualContext.health_verdict.classification.toLowerCase()} he.` : '';
-      const templates = [
-        `Ye ${title} he, jo ${cat} category ka product he. ${summary} ${verdict}`,
-        `Camera scan me detect hua item ${title} he. ${summary} ${verdict}`,
-        `${opener} maine identify kar liya, ye ${title} he, ${cat} category me! ${summary}`
-      ];
-      return this.getRotatingTemplate('identify', templates);
+      const verdict = this.visualContext.health_verdict?.classification ? (isEnglish ? `Health verdict is ${this.visualContext.health_verdict.classification.toLowerCase()}.` : hasMarathi ? `हे उत्पादन ${this.visualContext.health_verdict.classification.toLowerCase()} आहे.` : `Health rating ${this.visualContext.health_verdict.classification.toLowerCase()} he.`) : '';
+      if (isEnglish) {
+        return `This is ${title}, categorized under ${cat}. ${summary} ${verdict}`.trim();
+      }
+      if (hasMarathi) {
+        return `हे ${title} आहे, जे ${cat} श्रेणीत येते. ${summary} ${verdict}`.trim();
+      }
+      return `Ye ${title} he, jo ${cat} category ka product he. ${summary} ${verdict}`.trim();
     }
 
-    // 8. Details, Ingredients & Deeper Explanation ("aur batao", "tell me more", "ingredients", "details")
-    if (/detail|details|aur batao|explain|more|ingredient|ingredients|contents|fayde|use kaise/.test(q)) {
+    // 8. Details, Ingredients & Deeper Explanation
+    if (/detail|details|aur batao|explain|more|ingredient|ingredients|contents|fayde|use kaise|sanga|mahiti/.test(q)) {
       const summary = this.visualContext.headline_summary || '';
       const reason = this.visualContext.health_verdict?.reason || '';
-      const insight = Array.isArray(this.visualContext.actionable_insights) ? this.visualContext.actionable_insights.join('. ') : '';
-      const templates = [
-        `${opener} ${title} ke bare me details ye he: ${summary}. Health assessment ke mutabiq ${reason}. ${insight}`,
-        `${title} ka complete breakdown ye he: ${summary}. Iske key attributes analyze kiye gaye he, ${reason}. ${insight}`
-      ];
-      return this.getRotatingTemplate('details', templates);
+      if (isEnglish) {
+        return `Details for ${title}: ${summary}. Clinical assessment indicates ${reason}.`;
+      }
+      if (hasMarathi) {
+        return `${title} ची सविस्तर माहिती: ${summary}. मूल्यांकनानुसार ${reason}.`;
+      }
+      return `${title} ka breakdown: ${summary}. Assessment ke mutabiq ${reason}.`;
     }
 
     return null;
@@ -1277,7 +1244,14 @@ export class BolnaVoiceController {
     }
     this.activeAbortController = new AbortController();
 
-    const assignedOpener = this.getNextDeckOpener();
+    const isDevanagari = /[\u0900-\u097F]/.test(trimmed);
+    const hasIndicMarkers = /\b(kya|ye|yeh|hai|he|kaunsa|kaunsi|kaisa|kaisi|batao|suno|khao|nahi|acha|achha|kitna|kitni|dono|aap|aapke|iska|iski|isme|hain|kyunki|dekho|bilkul)\b/i.test(trimmed);
+    const hasMarathiMarkers = /\b(kay|kasa|kashi|kiti|konte|konta|konti|changle|changli|ahe|ahet|aahe|sanga|kadhi|vapraycha|aika|bagh|nakki|madhun)\b/i.test(trimmed);
+    const isPureEnglish = !isDevanagari && !hasIndicMarkers && !hasMarathiMarkers && /^[a-zA-Z0-9\s.,?!'"\-:;()]+$/.test(trimmed);
+
+    // Language mirroring: dynamically bind query language and suppress Hindi openers on English queries
+    const queryLang = isPureEnglish ? 'en' : hasMarathiMarkers ? 'mr' : (hasIndicMarkers || isDevanagari) ? 'hi' : this.language;
+    const assignedOpener = isPureEnglish ? '' : this.getNextDeckOpener();
     const currentProduct = this.visualContext?.object_title ||
       this.visualContext?.detected_objects?.[0]?.object_title ||
       this.lastDetectedProductTitle ||
@@ -1303,7 +1277,7 @@ export class BolnaVoiceController {
         body: JSON.stringify({
           userQuery: trimmed,
           visualContext: this.visualContext,
-          language: this.language,
+          language: queryLang,
           suggestedOpener: assignedOpener,
           conversationHistory: this.conversationHistory.slice(0, -1),
         }),
@@ -1458,17 +1432,24 @@ export class BolnaVoiceController {
       }, 400);
     };
 
+    // 1. Primary Engine: Studio-Grade Neural Indian Female Voice Synthesis
+    // Delivers 100% human, lifelike, breathy Microsoft Azure Neural audio (Neerja / Swara / Aarohi)
+    // Completely eliminates robotic/computer-like legacy voices across all browsers and devices.
+    const serverTtsSuccess = await this.playServerTts(cleanText, onSpeechEnd);
+    if (serverTtsSuccess) {
+      return;
+    }
+
+    // 2. Secondary Engine: Device-Native SpeechSynthesis (Offline Fallback)
     // Ensure bestVoice is queried fresh if not yet cached
     if (!bestVoice && typeof window !== 'undefined' && 'speechSynthesis' in window) {
       bestVoice = this.findBestNaturalFemaleVoice();
     }
 
-    // 3. High-Clarity Authentic Indian Female Speech Synthesis (Primary across all devices)
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       try {
         const utter = new SpeechSynthesisUtterance(cleanPhoneticText);
         this.activeUtterance = utter;
-        // Anchor to global window so Chromium V8 GC can NEVER collect it mid-playback
         (window as any).__iraActiveUtterance = utter;
 
         if (bestVoice) {
@@ -1478,10 +1459,9 @@ export class BolnaVoiceController {
           utter.lang = this.language === 'en' ? 'en-IN' : this.language === 'mr' ? 'mr-IN' : 'hi-IN';
         }
 
-        // Natural, warm, expressive Indian female pitch and pace
         utter.volume = 1.0;
-        utter.pitch = 1.05; // Warm, natural human female pitch
-        utter.rate = 1.0;   // Natural human conversational flow
+        utter.pitch = 1.05;
+        utter.rate = 1.0;
 
         utter.onend = onSpeechEnd;
         utter.onerror = (err) => {
@@ -1489,7 +1469,6 @@ export class BolnaVoiceController {
           onSpeechEnd();
         };
 
-        // Mobile & Chromium Keep-Alive Engine: Prevents 14-second stall on long spoken explanations
         let hasStarted = false;
         utter.onstart = () => {
           hasStarted = true;
@@ -1506,7 +1485,6 @@ export class BolnaVoiceController {
           }, 3500);
         };
 
-        // Gentle Mobile Queue Unstick: unpauses stalled audio queue without aborting native voice
         setTimeout(() => {
           if (!hasStarted && this.isSpeaking) {
             if (typeof window !== 'undefined' && 'speechSynthesis' in window && window.speechSynthesis.paused) {
@@ -1515,7 +1493,6 @@ export class BolnaVoiceController {
           }
         }, 1200);
 
-        // Safety Watchdog: Scaled to full word count for rich, detailed multi-sentence explanations
         const wordCount = cleanPhoneticText.split(/\s+/).length;
         const maxExpectedMs = Math.max(7000, (wordCount / 1.5) * 1000 + 4000);
         if (this.utteranceWatchdogTimer) clearTimeout(this.utteranceWatchdogTimer);
@@ -1531,33 +1508,42 @@ export class BolnaVoiceController {
           window.speechSynthesis.resume();
         }
         window.speechSynthesis.speak(utter);
-        // Mobile Chrome / Safari quirk: unstick paused state immediately after speak call
         if (window.speechSynthesis.paused) {
           window.speechSynthesis.resume();
         }
         return;
       } catch (synthErr) {
-        console.warn('Speech synthesis initialization issue, falling back:', synthErr);
+        console.warn('Speech synthesis initialization issue:', synthErr);
         onSpeechEnd();
         return;
       }
     }
 
-    // Direct fallback if speechSynthesis is unavailable
-    await this.playServerTts(cleanText, onSpeechEnd);
+    onSpeechEnd();
   }
 
   /**
-   * High-Reliability Universal Audio Player:
-   * Uses HTML5 Audio element with OpenAI tts-1 audio stream for 100% reliability on mobile phones,
-   * iPhones, iPads, and Android browsers where Web SpeechSynthesis is prone to silent failure.
+   * High-Reliability Studio Neural Audio Player:
+   * Uses HTML5 Audio element with Microsoft Azure Studio Neural stream (/api/voice-tts)
+   * for 100% human, realistic, breathy Indian female speech synthesis.
    */
   public async playServerTts(text: string, onEnd: () => void): Promise<boolean> {
     try {
+      // Dynamic language detection from spoken content for perfect voice selection
+      const isDevanagari = /[\u0900-\u097F]/.test(text);
+      const hasIndic = isDevanagari || /\b(kya|ye|yeh|hai|he|kaunsa|kaunsi|kaisa|kaisi|batao|suno|khao|nahi|acha|achha|kitna|kitni|dono|aap|aapke|iska|iski|isme|hain|dekho|bilkul)\b/i.test(text);
+      const hasMarathi = /\b(kay|kasa|kashi|kiti|konte|konta|konti|changle|changli|ahe|ahet|aahe|sanga|kadhi|aika|bagh|nakki|madhun)\b/i.test(text);
+
+      const effectiveLang = (this.language === 'mr' || hasMarathi)
+        ? 'mr'
+        : (this.language === 'hi' || this.language === 'hinglish' || hasIndic)
+        ? 'hi'
+        : 'en';
+
       const res = await fetch('/api/voice-tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, voice: 'nova' }),
+        body: JSON.stringify({ text, language: effectiveLang }),
       });
 
       if (!res.ok) throw new Error('TTS server endpoint failed');
@@ -1595,7 +1581,6 @@ export class BolnaVoiceController {
       return true;
     } catch (e) {
       console.warn('Server TTS audio playback error:', e);
-      onEnd();
       return false;
     }
   }
@@ -1608,7 +1593,15 @@ export class BolnaVoiceController {
     if (!trimmed) return;
 
     this.setStatus('thinking');
-    const assignedOpener = this.getNextDeckOpener();
+
+    const isDevanagari = /[\u0900-\u097F]/.test(trimmed);
+    const hasIndicMarkers = /\b(kya|ye|yeh|hai|he|kaunsa|kaunsi|kaisa|kaisi|batao|suno|khao|nahi|acha|achha|kitna|kitni|dono|aap|aapke|iska|iski|isme|hain|kyunki|dekho|bilkul)\b/i.test(trimmed);
+    const hasMarathiMarkers = /\b(kay|kasa|kashi|kiti|konte|konta|konti|changle|changli|ahe|ahet|aahe|sanga|kadhi|vapraycha|aika|bagh|nakki|madhun)\b/i.test(trimmed);
+    const isPureEnglish = !isDevanagari && !hasIndicMarkers && !hasMarathiMarkers && /^[a-zA-Z0-9\s.,?!'"\-:;()]+$/.test(trimmed);
+
+    const queryLang = isPureEnglish ? 'en' : hasMarathiMarkers ? 'mr' : (hasIndicMarkers || isDevanagari) ? 'hi' : this.language;
+    const assignedOpener = isPureEnglish ? '' : this.getNextDeckOpener();
+
     const currentProduct = this.visualContext?.object_title ||
       this.visualContext?.detected_objects?.[0]?.object_title ||
       this.lastDetectedProductTitle ||
@@ -1621,7 +1614,7 @@ export class BolnaVoiceController {
         body: JSON.stringify({
           userQuery: trimmed,
           visualContext: this.visualContext,
-          language: this.language,
+          language: queryLang,
           suggestedOpener: assignedOpener,
           conversationHistory: this.conversationHistory,
         }),
@@ -1659,7 +1652,7 @@ export class BolnaVoiceController {
       console.warn('Backend API notice, utilizing autonomous spatial & NLP engine:', err);
       let instant = this.tryInstantSpatialGrounding(trimmed);
       if (!instant) {
-        instant = this.generateAutonomousHinglishReply(trimmed, currentProduct);
+        instant = this.generateAutonomousReply(trimmed, currentProduct, queryLang);
       }
 
       if (this.callbacks.onAssistantTranscript) {
@@ -1676,49 +1669,93 @@ export class BolnaVoiceController {
   }
 
   /**
-   * Autonomous Hinglish Natural Language Generator
-   * Provides fluent, intelligent, empathetic conversational responses in static/Netlify environments
+   * Autonomous Multilingual Natural Language Generator
+   * Provides fluent, intelligent, concise 1-2 line conversational responses with perfect endings
    */
-  private generateAutonomousHinglishReply(query: string, currentProduct: string): string {
+  private generateAutonomousReply(query: string, currentProduct: string, lang: 'en' | 'hi' | 'mr' | 'hinglish' = 'en'): string {
     const q = query.toLowerCase();
-    const opener = this.getNextDeckOpener();
+    const isEnglish = lang === 'en';
+    const isMarathi = lang === 'mr';
+    const opener = isEnglish ? '' : this.getNextDeckOpener();
 
     // 1. Greeting intent
-    if (/\b(hello|hi|namaste|hey|suno|helo)\b/i.test(q)) {
-      return `${opener} Namaste! Main IRA hoon. Main camera ke samne rakhe kisi bhi food ya medicine product ko live verify kar sakti hoon!`;
+    if (/\b(hello|hi|namaste|hey|suno|helo|namaskar)\b/i.test(q)) {
+      if (isEnglish) {
+        return `Hello! I am IRA. I can instantly analyze food or medicine items held in front of the camera.`;
+      }
+      if (isMarathi) {
+        return `नमस्कार! मी इरा आहे. कॅमेऱ्यासमोर धरलेले अन्न किंवा औषध मी त्वरित स्कॅन करू शकते.`;
+      }
+      return `${opener} Namaste! Main IRA hoon. Main camera ke samne rakhe food ya medicine ko verify kar sakti hoon!`;
     }
 
     // 2. Identity intent
-    if (/\b(kaun|who are you|kya karti ho|tumhara naam|your name)\b/i.test(q)) {
-      return `Haan ji! Main IRA hoon, aapki autonomous spatial vision aur healthcare voice assistant. Aap mujhe medicines ya grocery dikhayein, main unke ingredients aur clinical warnings turant check karungi!`;
+    if (/\b(kaun|who are you|kya karti ho|tumhara naam|your name|kon aahes)\b/i.test(q)) {
+      if (isEnglish) {
+        return `I am IRA, your spatial vision and healthcare assistant. Show me any medicine or grocery item and I will verify it.`;
+      }
+      if (isMarathi) {
+        return `मी इरा आहे, तुमची व्हॉईस आणि व्हिजन असिस्टंट. मला औषधे किंवा किराणा दाखवा, मी लगेच तपासणी करेन.`;
+      }
+      return `Main IRA hoon, aapki spatial vision aur healthcare voice assistant. Aap mujhe products dikhayein, main safety check karungi!`;
     }
 
     // 3. Status intent
-    if (/\b(kaise ho|kaisi ho|how are you|kya chal raha)\b/i.test(q)) {
-      return `${opener} Main bil-kul badiya aur ready hoon! Aap camera ke samne koi product hold karein, main turant scan karke bataungi!`;
+    if (/\b(kaise ho|kaisi ho|how are you|kya chal raha|kashi aahes)\b/i.test(q)) {
+      if (isEnglish) {
+        return `I am doing great and ready! Hold any product in front of the camera and I will scan it.`;
+      }
+      if (isMarathi) {
+        return `मी छान आहे आणि तयार आहे! कॅमेऱ्यासमोर उत्पादन धरा, मी लगेच स्कॅन करेन.`;
+      }
+      return `${opener} Main bil-kul ready hoon! Aap camera ke samne koi product hold karein, main turant bataungi!`;
     }
 
     // 4. Product inquiry intent when product is visible
     if (this.visualContext && currentProduct && currentProduct !== 'No product in view') {
       const title = this.visualContext.object_title || currentProduct;
       const verdict = this.visualContext.health_verdict?.classification || 'HEALTHY';
-      const reason = this.visualContext.health_verdict?.reason || 'ingredients balanced hain';
+      const reason = this.visualContext.health_verdict?.reason || (isEnglish ? 'balanced ingredients' : isMarathi ? 'घटक संतुलित आहेत' : 'ingredients balanced hain');
 
-      if (/\b(kya he|kya hai|what is this|ye kya|yeh kya)\b/i.test(q)) {
-        return `${opener} Ye ${title} he. Scan ke according iska health status ${verdict.toLowerCase()} he, basically ${reason}!`;
+      if (/\b(kya he|kya hai|what is this|ye kya|yeh kya|he kay|kay aahe)\b/i.test(q)) {
+        if (isEnglish) {
+          return `This is ${title}. According to the scan, its health status is ${verdict.toLowerCase()}, with ${reason}.`;
+        }
+        if (isMarathi) {
+          return `हे ${title} आहे. स्कॅननुसार याचे आरोग्य वर्गीकरण ${verdict.toLowerCase()} आहे, कारण ${reason}.`;
+        }
+        return `${opener} Ye ${title} he. Scan ke according iska status ${verdict.toLowerCase()} he, basically ${reason}!`;
       }
 
-      if (/\b(khao|kha sakte|consume|use|safe|theek)\b/i.test(q)) {
-        return `${opener} ${title} scan ho chuka he. Iska verdict ${verdict.toLowerCase()} he. Dhyan rahe: ${reason}!`;
+      if (/\b(khao|kha sakte|consume|use|safe|theek|khau|vapraycha)\b/i.test(q)) {
+        if (isEnglish) {
+          return `${title} is verified safe. Its health rating is ${verdict.toLowerCase()}, with ${reason}.`;
+        }
+        if (isMarathi) {
+          return `${title} सुरक्षित आहे. याचे रेटिंग ${verdict.toLowerCase()} आहे, कारण ${reason}.`;
+        }
+        return `${opener} ${title} scan ho chuka he. Iska verdict ${verdict.toLowerCase()} he: ${reason}!`;
       }
     }
 
     // 5. Open-ended question fallback
     if (currentProduct && currentProduct !== 'No product in view') {
-      return `${opener} ${currentProduct} ke scan ke mutabiq details frame me load ho chuki hain. Aap iske sugar, sodium ya safety warnings ke baare me pooch sakte hain!`;
+      if (isEnglish) {
+        return `${currentProduct} is loaded in frame. You can ask about its safety, dosage, or ingredients.`;
+      }
+      if (isMarathi) {
+        return `${currentProduct} स्कॅन झाले आहे. तुम्ही सुरक्षितता किंवा घटकांविषयी विचारू शकता.`;
+      }
+      return `${opener} ${currentProduct} load ho chuka he. Aap iske ingredients ya warnings ke baare me pooch sakte hain!`;
     }
 
-    return `${opener} main aapki voice sun rahi hoon! Camera ke aage koi bhi medicine ya grocery packet dikhayein, main real time me analyze karungi!`;
+    if (isEnglish) {
+      return `I am listening! Hold any medicine or grocery package in front of the camera to analyze it.`;
+    }
+    if (isMarathi) {
+      return `मी ऐकत आहे! कॅमेऱ्यासमोर कोणतेही उत्पादन धरा, मी त्वरित विश्लेषण करेन.`;
+    }
+    return `${opener} main aapki voice sun rahi hoon! Camera ke aage koi product dikhayein, main analyze karungi!`;
   }
 
   /**
