@@ -278,7 +278,7 @@ export async function POST(req: NextRequest) {
             type: 'image_url',
             image_url: {
               url: `data:image/jpeg;base64,${cleanBase64}`,
-              detail: 'auto',
+              detail: 'high',
             },
           },
         ],
@@ -343,7 +343,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // LIVE REGISTRY CROSS-VERIFICATION (OpenFoodFacts / OpenFDA) - Concurrently executed via Promise.allSettled
+    // RAPID SUB-SECOND CROSS-VERIFICATION (OpenFoodFacts / OpenFDA) - 200ms race to prevent mobile latency
     try {
       if (parsedData.detected_objects && parsedData.detected_objects.length > 0) {
         await Promise.allSettled(
@@ -357,7 +357,7 @@ export async function POST(req: NextRequest) {
               )}&page_size=1&json=true`;
 
               const controller = new AbortController();
-              const timeoutId = setTimeout(() => controller.abort(), 500);
+              const timeoutId = setTimeout(() => controller.abort(), 200);
 
               try {
                 const offRes = await fetch(offUrl, {
@@ -400,7 +400,7 @@ export async function POST(req: NextRequest) {
               )}"+openfda.generic_name:"${encodeURIComponent(firstWord)}"&limit=1`;
 
               const controller = new AbortController();
-              const timeoutId = setTimeout(() => controller.abort(), 500);
+              const timeoutId = setTimeout(() => controller.abort(), 200);
 
               try {
                 const fdaRes = await fetch(fdaUrl, {

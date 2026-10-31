@@ -2,7 +2,7 @@
 
 
 export type VoiceStatus = 'idle' | 'connecting' | 'listening' | 'thinking' | 'speaking';
-export type VoiceLanguage = 'hinglish' | 'hi' | 'en';
+export type VoiceLanguage = 'hinglish' | 'hi' | 'en' | 'mr';
 
 export interface VoiceConversationTurn {
   role: 'user' | 'assistant';
@@ -41,6 +41,8 @@ export class BolnaVoiceController {
   private gainNode: GainNode | null = null;
   private compressorNode: DynamicsCompressorNode | null = null;
   private currentSourceNode: AudioBufferSourceNode | null = null;
+  private currentAudioElement: HTMLAudioElement | null = null;
+  private mobileAudioPlayer: HTMLAudioElement | null = null;
   private micStream: MediaStream | null = null;
   private micSourceNode: MediaStreamAudioSourceNode | null = null;
   private micDspNodes: AudioNode[] = [];
@@ -72,7 +74,13 @@ export class BolnaVoiceController {
     'Mujhe lagta he,',
     'Bil-kul clear he,',
     'Aap-ke liye good news he,',
-    'Scan ke mutabiq,'
+    'Scan ke mutabiq,',
+    'Aika na,',
+    'Bagh na,',
+    'Khar sangaych tar,',
+    'Ho na,',
+    'Nakki,',
+    'Mala vat-te,'
   ];
 
   // Layer 1: Streaming Pipeline state
@@ -184,6 +192,9 @@ export class BolnaVoiceController {
       'swara',                   // Microsoft Swara Online (Natural) - Expressive Hindi
       'heera',                   // Microsoft Heera - English (India)
       'google हिन्दी',            // Google Hindi (Chrome)
+      'google मराठी',            // Google Marathi (Chrome)
+      'marathi',                 // Marathi neural voices
+      'mr-in',
       'google english (india)',  // Google English (India) (Chrome)
       'veena',                   // Apple Veena (en-IN)
       'lekha',                   // Apple Lekha (hi-IN)
@@ -271,13 +282,16 @@ export class BolnaVoiceController {
     return (
       n.includes('india') ||
       n.includes('hindi') ||
+      n.includes('marathi') ||
       n.includes('neerja') ||
       n.includes('swara') ||
       n.includes('heera') ||
       n.includes('veena') ||
       n.includes('lekha') ||
       l.startsWith('hi') ||
-      l === 'en-in'
+      l.startsWith('mr') ||
+      l === 'en-in' ||
+      l === 'mr-in'
     );
   }
 
@@ -391,6 +405,29 @@ export class BolnaVoiceController {
    */
   public getFastEnglishTranslation(text: string): string | null {
     const t = text.toLowerCase().trim();
+    // Marathi questions fast translations
+    if (/हे (चांगलं|सुरक्षित|हेल्दी|योग्य) आहे का|he (changla|surakshit|healthy) ahe ka/.test(t)) {
+      return 'Is this product healthy and safe for me?';
+    }
+    if (/हे काय आहे|he kay ahe|याची माहिती/.test(t)) {
+      return 'What is this detected product?';
+    }
+    if (/कोणतं (चांगलं|योग्य|बेहतर) आहे|दोघांमध्ये कोणतं|dono madhun|konte changle/.test(t)) {
+      return 'Which one of these two is the better option?';
+    }
+    if (/एक्सपायरी कधी आहे|याची एक्सपायरी|expiry kadhi ahe/.test(t)) {
+      return 'What is the expiration date and freshness?';
+    }
+    if (/खाऊ शकतो का|घेऊ शकतो का|khau shakto ka|gheu shakto ka/.test(t)) {
+      return 'Can I safely consume this product?';
+    }
+    if (/दुष्परिणाम|धोका|काही साईड इफेक्ट|dushparinam/.test(t)) {
+      return 'What are the warnings and risk factors?';
+    }
+    if (/कसे वापरावे|कधी घ्यावे|kase vaprave|kadhi ghyave/.test(t)) {
+      return 'What is the recommended usage instruction and timing?';
+    }
+
     if (/kya (ye|yeh) (healthy|acha|theek|sahi) hai/.test(t) || /यह.*(अच्छा|हेल्दी|सही).*है/.test(t) || /is this healthy/.test(t)) {
       return 'Is this product healthy for me?';
     }
@@ -440,7 +477,7 @@ export class BolnaVoiceController {
   public setLanguage(lang: VoiceLanguage) {
     this.language = lang;
     if (this.recognition) {
-      this.recognition.lang = lang === 'en' ? 'en-IN' : 'hi-IN';
+      this.recognition.lang = lang === 'en' ? 'en-IN' : lang === 'mr' ? 'mr-IN' : 'hi-IN';
     }
   }
 
@@ -502,6 +539,21 @@ export class BolnaVoiceController {
       }
     }
 
+    if (this.currentAudioElement) {
+      try {
+        this.currentAudioElement.pause();
+        this.currentAudioElement.currentTime = 0;
+      } catch {}
+      this.currentAudioElement = null;
+    }
+
+    if (this.mobileAudioPlayer) {
+      try {
+        this.mobileAudioPlayer.pause();
+        this.mobileAudioPlayer.currentTime = 0;
+      } catch {}
+    }
+
     if (this.currentSourceNode) {
       try {
         this.currentSourceNode.stop();
@@ -513,6 +565,40 @@ export class BolnaVoiceController {
     if (this.animFrameId) {
       cancelAnimationFrame(this.animFrameId);
       this.animFrameId = null;
+    }
+  }
+
+  /**
+   * Universal Mobile Audio Gesture Unlocker:
+   * iOS Safari & Android Chrome strictly enforce that audio playback cannot start after an
+   * asynchronous API latency unless an Audio element was primed within a direct user interaction.
+   * This method unlocks both HTML5 Audio and Web Audio contexts instantly on touch/click.
+   */
+  public unlockAudio(): void {
+    if (typeof window === 'undefined') return;
+    try {
+      if (!this.mobileAudioPlayer) {
+        this.mobileAudioPlayer = new Audio();
+      }
+      this.mobileAudioPlayer.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA==';
+      this.mobileAudioPlayer.play().then(() => {
+        if (this.mobileAudioPlayer) {
+          this.mobileAudioPlayer.pause();
+        }
+      }).catch(() => {});
+
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        if (window.speechSynthesis.paused) {
+          window.speechSynthesis.resume();
+        }
+      }
+
+      if (this.audioContext && this.audioContext.state === 'suspended') {
+        this.audioContext.resume().catch(() => {});
+      }
+    } catch (e) {
+      console.warn('[Voice AI] Audio unlock notice:', e);
     }
   }
 
@@ -712,7 +798,7 @@ export class BolnaVoiceController {
       this.recognition.continuous = !isMobile;
       this.recognition.interimResults = true;
       this.recognition.maxAlternatives = 1;
-      this.recognition.lang = this.language === 'en' ? 'en-IN' : 'hi-IN';
+      this.recognition.lang = this.language === 'en' ? 'en-IN' : this.language === 'mr' ? 'mr-IN' : 'hi-IN';
 
       this.recognition.onstart = () => {
         this.isListeningRecognition = true;
@@ -1027,6 +1113,7 @@ export class BolnaVoiceController {
     return null;
   }
 
+
   /**
    * Direct user question method (callable from UI chips, text input, or speech)
    */
@@ -1036,10 +1123,10 @@ export class BolnaVoiceController {
     this.stopAllAudio();
 
     const isDevanagari = /[\u0900-\u097F]/.test(trimmed);
-    const isHinglish = /\b(kya|ye|yeh|hai|kaunsa|kaunsi|kaisa|kaisi|batao|suno|khao|nahi|acha|achhi|kitna|kitni|dono)\b/i.test(trimmed);
+    const isIndic = isDevanagari || /\b(kya|ye|yeh|hai|kaunsa|kaunsi|kaisa|kaisi|batao|suno|khao|nahi|acha|achhi|kitna|kitni|dono|kay|kasa|kashi|kiti|konte|konta|konti|changle|ahe|ahet|sanga|kadhi|vapraycha)\b/i.test(trimmed);
 
     if (this.callbacks.onUserTranscript) {
-      if (isDevanagari || isHinglish) {
+      if (isIndic) {
         const fast = this.getFastEnglishTranslation(trimmed);
         this.callbacks.onUserTranscript(fast || 'Translating query to English...');
       } else {
@@ -1278,7 +1365,31 @@ export class BolnaVoiceController {
       }, 400);
     };
 
-    // 3. High-Clarity Speech Synthesis using the best natural female voice
+    const isMobile =
+      typeof navigator !== 'undefined' &&
+      /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+    let fallbackTriggered = false;
+    const triggerServerTtsFallback = async () => {
+      if (fallbackTriggered) return;
+      fallbackTriggered = true;
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        try { window.speechSynthesis.cancel(); } catch {}
+      }
+      await this.playServerTts(cleanText, onSpeechEnd);
+    };
+
+    // On mobile phones or when Marathi is selected:
+    // Mobile browsers (iOS Safari & Android Chrome) have severe local SpeechSynthesis bugs (silent stalls, missing Indic models).
+    // Prioritize OpenAI studio-grade neural voice ('nova') for 100% reliable, crystal-clear mobile playback.
+    if (isMobile || this.language === 'mr' || !bestVoice || !this.isIndianVoice(bestVoice)) {
+      const serverTtsSuccess = await this.playServerTts(cleanText, onSpeechEnd);
+      if (serverTtsSuccess) {
+        return;
+      }
+    }
+
+    // 3. High-Clarity Speech Synthesis using the best natural female voice with instant server fallback
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       try {
         const utter = new SpeechSynthesisUtterance(cleanPhoneticText);
@@ -1299,7 +1410,24 @@ export class BolnaVoiceController {
         utter.rate = 1.03;  // Natural human conversational flow
 
         utter.onend = onSpeechEnd;
-        utter.onerror = onSpeechEnd;
+        // If device speech engine fails or lacks voice pack, immediately fallback to server neural voice!
+        utter.onerror = (err) => {
+          console.warn('[SpeechSynthesis] Device engine error, switching to server TTS:', err);
+          triggerServerTtsFallback();
+        };
+
+        // Safety Watchdog: If utter.onstart doesn't fire within 650ms (Android Chrome stalled queue), fallback!
+        let hasStarted = false;
+        utter.onstart = () => {
+          hasStarted = true;
+        };
+
+        setTimeout(() => {
+          if (!hasStarted && this.isSpeaking && !fallbackTriggered) {
+            console.warn('[SpeechSynthesis] utter.onstart delayed past 650ms, auto-recovering via server TTS.');
+            triggerServerTtsFallback();
+          }
+        }, 650);
 
         // Safety Watchdog: If Chromium drops onend event (browser bug), auto-unstick after calculated speech duration
         const wordCount = cleanPhoneticText.split(/\s+/).length;
@@ -1323,40 +1451,66 @@ export class BolnaVoiceController {
         }
         return;
       } catch (synthErr) {
-        console.warn('Speech synthesis issue, using audio fallback:', synthErr);
+        console.warn('Speech synthesis initialization issue, falling back:', synthErr);
+        await triggerServerTtsFallback();
+        return;
       }
     }
 
-    // 4. Fallback: Rapid single-line server synthesis with high-clarity female voice
+    // Direct fallback if speechSynthesis is unavailable
+    await this.playServerTts(cleanText, onSpeechEnd);
+  }
+
+  /**
+   * High-Reliability Universal Audio Player:
+   * Uses HTML5 Audio element with OpenAI tts-1 audio stream for 100% reliability on mobile phones,
+   * iPhones, iPads, and Android browsers where Web SpeechSynthesis is prone to silent failure.
+   */
+  public async playServerTts(text: string, onEnd: () => void): Promise<boolean> {
     try {
       const res = await fetch('/api/voice-tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: cleanPhoneticText, voice: 'nova' }),
+        body: JSON.stringify({ text, voice: 'nova' }),
       });
 
-      if (!res.ok) throw new Error('TTS fallback failed');
-      const arrayBuffer = await res.arrayBuffer();
+      if (!res.ok) throw new Error('TTS server endpoint failed');
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
 
-      if (!this.audioContext) this.initAudioContext();
-      if (!this.audioContext) {
-        onSpeechEnd();
-        return;
-      }
+      // Re-use pre-unlocked mobile audio player to bypass iOS Safari & Chrome user-gesture expiry
+      const audio = this.mobileAudioPlayer || new Audio();
+      this.currentAudioElement = audio;
+      audio.src = blobUrl;
 
-      const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
-      const source = this.audioContext.createBufferSource();
-      source.buffer = audioBuffer;
-      source.connect(this.audioContext.destination);
-
-      this.currentSourceNode = source;
-      source.onended = () => {
-        this.currentSourceNode = null;
-        onSpeechEnd();
+      let ended = false;
+      const cleanup = () => {
+        if (ended) return;
+        ended = true;
+        URL.revokeObjectURL(blobUrl);
+        audio.onended = null;
+        audio.onerror = null;
+        if (this.currentAudioElement === audio) {
+          this.currentAudioElement = null;
+        }
+        onEnd();
       };
-      source.start(0);
-    } catch {
-      onSpeechEnd();
+
+      audio.onended = cleanup;
+      audio.onerror = cleanup;
+
+      try {
+        await audio.play();
+      } catch (playErr) {
+        console.warn('HTML5 Audio play rejected, attempting user unpause:', playErr);
+        cleanup();
+        return false;
+      }
+      return true;
+    } catch (e) {
+      console.warn('Server TTS audio playback error:', e);
+      onEnd();
+      return false;
     }
   }
 

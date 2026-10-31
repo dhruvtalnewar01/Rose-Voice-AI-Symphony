@@ -283,20 +283,21 @@ export default function LiveVisionVoiceStudio() {
     }
 
     let stream: MediaStream | null = null;
+    const isPortrait = typeof window !== 'undefined' && window.innerHeight > window.innerWidth;
     const constraintLevels: MediaStreamConstraints[] = [
       {
         video: {
           facingMode: { ideal: facingMode },
-          width: { ideal: 1920, min: 640 },
-          height: { ideal: 1080, min: 480 },
+          width: { ideal: isPortrait ? 1080 : 1920, min: 480 },
+          height: { ideal: isPortrait ? 1920 : 1080, min: 480 },
         },
         audio: false,
       },
       {
         video: {
           facingMode: { ideal: facingMode },
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
+          width: { ideal: isPortrait ? 720 : 1280 },
+          height: { ideal: isPortrait ? 1280 : 720 },
         },
         audio: false,
       },
@@ -585,8 +586,18 @@ export default function LiveVisionVoiceStudio() {
         const timeSinceLastScan = now - lastAnalyzedTimeRef.current;
         const timeSinceCameraStart = now - cameraStartTime;
 
+        // Mobile handheld jitter calibration:
+        // Handheld phone micro-tremors generate avgDiff between 14 and 24.
+        // A rigid threshold of 16 caused handheld phones to constantly reset stableFrameCount to 0!
+        // Calibrating threshold to 28 on mobile devices (18 on desktop) ensures handheld stillness is recognized.
+        const isMobileDevice =
+          typeof navigator !== 'undefined' &&
+          (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+            navigator.maxTouchPoints > 0);
+        const motionThreshold = isMobileDevice ? 28 : 18;
+
         // Motion detection
-        if (avgDiff > 16) {
+        if (avgDiff > motionThreshold) {
           motionDetected = true;
           stableFrameCount = 0;
         } else {
@@ -604,8 +615,8 @@ export default function LiveVisionVoiceStudio() {
         // 2. Motion settled: User showed/changed product, steady for 2 intervals (~360ms) after 1.5s
         const isMotionSettled = motionDetected && stableFrameCount >= 2 && timeSinceLastScan > 1500;
 
-        // 3. Periodic sanity rescan: stationary camera, every 8 seconds
-        const isPeriodicRescan = timeSinceLastScan > 8000 && stableFrameCount >= 3;
+        // 3. Periodic sanity rescan: stationary camera, every 4.5 seconds (reduced for instant phone responsiveness)
+        const isPeriodicRescan = timeSinceLastScan > 4500 && stableFrameCount >= 2;
 
         if (isInitialScan || isMotionSettled || isPeriodicRescan) {
           motionDetected = false;
@@ -646,7 +657,8 @@ export default function LiveVisionVoiceStudio() {
     if (!typedQuery.trim() || !voiceControllerRef.current) return;
     const q = typedQuery.trim();
     setTypedQuery('');
-    const isIndic = /[\u0900-\u097F]/.test(q) || /\b(kya|ye|yeh|hai|kaunsa|kaunsi|kaisa|kaisi|batao|suno|khao|nahi|acha|achhi|kitna|kitni|dono)\b/i.test(q);
+    voiceControllerRef.current.unlockAudio();
+    const isIndic = /[\u0900-\u097F]/.test(q) || /\b(kya|ye|yeh|hai|kaunsa|kaunsi|kaisa|kaisi|batao|suno|khao|nahi|acha|achhi|kitna|kitni|dono|kay|kasa|kashi|kiti|konte|konta|konti|changle|ahe|ahet|sanga)\b/i.test(q);
     setUserTranscript(isIndic ? 'Translating query to English...' : q);
     setAssistantTranscript('');
     voiceControllerRef.current.stopAllAudio();
@@ -664,14 +676,8 @@ export default function LiveVisionVoiceStudio() {
     } else {
       setUserTranscript('');
       setAssistantTranscript('');
-      // AudioContext & SpeechSynthesis mobile user-gesture unlock
-      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-        try {
-          if (window.speechSynthesis.paused) {
-            window.speechSynthesis.resume();
-          }
-        } catch {}
-      }
+      // Universal gesture unlock for iOS Safari and Android Chrome
+      voiceControllerRef.current.unlockAudio();
       // Instant Connection: Never block voice session on optical analysis
       if (!analyzedData && !isAnalyzingRef.current) {
         runVisionAnalysis();
@@ -806,11 +812,18 @@ export default function LiveVisionVoiceStudio() {
             <Globe2 className="w-3.5 h-3.5 text-blue-600" />
             <select
               value={language}
-              onChange={(e) => setLanguage(e.target.value as VoiceLanguage)}
+              onChange={(e) => {
+                const nextLang = e.target.value as VoiceLanguage;
+                setLanguage(nextLang);
+                if (voiceControllerRef.current) {
+                  voiceControllerRef.current.setLanguage(nextLang);
+                }
+              }}
               className="bg-transparent text-slate-800 text-xs font-semibold focus:outline-none cursor-pointer"
             >
               <option value="hinglish">Hinglish</option>
               <option value="hi">हिंदी (Hindi)</option>
+              <option value="mr">मराठी (Marathi)</option>
               <option value="en">English</option>
             </select>
           </div>
