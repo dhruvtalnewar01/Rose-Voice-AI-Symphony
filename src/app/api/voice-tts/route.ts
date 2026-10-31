@@ -18,8 +18,8 @@ async function synthesizeWithEdgeTts(text: string, voiceName: string): Promise<B
   return new Promise<Buffer>((resolve, reject) => {
     const chunks: Buffer[] = [];
     const timeout = setTimeout(() => {
-      reject(new Error('Edge TTS stream timed out after 7000ms'));
-    }, 7000);
+      reject(new Error('Edge TTS stream timed out after 14000ms'));
+    }, 14000);
 
     audioStream.on('data', (chunk: Buffer) => {
       chunks.push(chunk);

@@ -529,20 +529,6 @@ export class BolnaVoiceController {
     }
 
     this.visualContext = ctx;
-
-    // AUTO-HEAL: If product changed while controller was stuck in processing/speaking state for >4.5s,
-    // immediately reset audio and unstick the controller to guarantee instant responsiveness!
-    if (this.isProcessingQuery || this.isSpeaking || this.isThinking) {
-      if (Date.now() - this.lastActionTimestamp > 4500) {
-        console.warn('[Auto-Heal] Recovering stuck voice state on product transition.');
-        this.stopAllAudio();
-        this.isProcessingQuery = false;
-        this.isSpeaking = false;
-        this.isThinking = false;
-        this.setStatus('listening');
-        this.startBrowserSpeechRecognition();
-      }
-    }
   }
 
   public getConversationHistory(): VoiceConversationTurn[] {
@@ -1550,15 +1536,31 @@ export class BolnaVoiceController {
       const blob = await res.blob();
       const blobUrl = URL.createObjectURL(blob);
 
+      // Cleanly stop any existing active audio before playing new stream
+      if (this.currentAudioElement && this.currentAudioElement !== this.mobileAudioPlayer) {
+        try {
+          this.currentAudioElement.pause();
+          this.currentAudioElement.src = '';
+        } catch {}
+      }
+
       // Re-use pre-unlocked mobile audio player to bypass iOS Safari & Chrome user-gesture expiry
       const audio = this.mobileAudioPlayer || new Audio();
       this.currentAudioElement = audio;
+      if (typeof window !== 'undefined') {
+        (window as any).__iraActiveAudio = audio;
+      }
+
+      audio.preload = 'auto';
       audio.src = blobUrl;
 
       let ended = false;
+      let watchdog: any = null;
+
       const cleanup = () => {
         if (ended) return;
         ended = true;
+        if (watchdog) clearTimeout(watchdog);
         URL.revokeObjectURL(blobUrl);
         audio.onended = null;
         audio.onerror = null;
@@ -1569,7 +1571,20 @@ export class BolnaVoiceController {
       };
 
       audio.onended = cleanup;
-      audio.onerror = cleanup;
+      audio.onerror = (e) => {
+        console.warn('Audio playback notice:', e);
+        cleanup();
+      };
+
+      // Generous safety watchdog: scaled to word count (min 15s) so speech is NEVER prematurely killed
+      const wordCount = text.split(/\s+/).length;
+      const expectedDurationMs = Math.max(15000, (wordCount / 1.5) * 1000 + 8000);
+      watchdog = setTimeout(() => {
+        if (!ended && this.isSpeaking) {
+          console.warn('[Audio Safety Watchdog] Recovered audio playback state.');
+          cleanup();
+        }
+      }, expectedDurationMs);
 
       try {
         await audio.play();
